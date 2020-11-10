@@ -1,1 +1,2 @@
-# AdaFruit
+# adafuit
+AdaFruit projects
