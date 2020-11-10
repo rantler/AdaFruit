@@ -15,7 +15,7 @@
     Readability improvements and support for sunrise/sunset added by
     tantalusrur@gmail.com
 
-    Version 1.2.8
+    Version 1.2.9
 """
 
 # pylint: disable=import-error
