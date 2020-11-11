@@ -15,7 +15,7 @@
     Readability improvements and support for sunrise/sunset added by
     tantalusrur@gmail.com
 
-    Version 1.2.9
+    Version 1.3.1
 """
 
 # pylint: disable=import-error
@@ -47,9 +47,9 @@ TWELVE_HOUR = True      # If set, use 12-hour time vs 24-hour
 COUNTDOWN = False       # If set, show time to vs time of rise/set events
 BIT_DEPTH = 6           # Ideally 6, but can set lower if RAM is tight
 REFRESH_DELAY = 60      # Seconds to wait between updates. Should be <= ~5
-GLOBAL_BRIGHTNESS = 0.1 # Value ranging between 0.0 - 1.0 of text brightness
+GLOBAL_BRIGHTNESS = 0.1 # Text brightness value ranging between 0.0 - 1.0
 
-MOON_EVENT_COLOR = 0x333366
+MOON_EVENT_COLOR = 0x333355
 MOON_PERCENT_COLOR = 0xFFFF00
 SUN_EVENT_COLOR = 0xC04000
 TIME_COLOR = 0x808080
@@ -234,14 +234,19 @@ SYMBOL_FONT.load_glyphs('\u21A5\u21A7')
 # Display group is set up once, then we just shuffle items around later.
 # Order of creation here determines their stacking order.
 GROUP = displayio.Group(max_size=10)
+SLEEPING = displayio.Group(max_size=1)
 
 # Element 0 is a stand-in item, later replaced with the moon phase bitmap
 # pylint: disable=bare-except
 try:
     FILENAME = 'moon/splash-' + str(DISPLAY.rotation) + '.bmp'
-    BITMAP = displayio.OnDiskBitmap(open(FILENAME, 'rb'))
-    TILE_GRID = displayio.TileGrid(BITMAP, pixel_shader=displayio.ColorConverter())
+    TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(
+        open(FILENAME, 'rb')), pixel_shader=displayio.ColorConverter())
     GROUP.append(TILE_GRID)
+
+    TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(
+        open('sleeping.bmp', 'rb')), pixel_shader=displayio.ColorConverter())
+    SLEEPING.append(TILE_GRID)
 
 except:
     GROUP.append(adafruit_display_text.label.Label(SMALL_FONT,
@@ -269,7 +274,9 @@ GROUP.append(adafruit_display_text.label.Label(SMALL_FONT,
 GROUP.append(adafruit_display_text.label.Label(SYMBOL_FONT, color=0x00FF00, text='x', y=-99))
 # Element 9 is the time of (or time to) next rise/set event - Color is overridden by event colors
 GROUP.append(adafruit_display_text.label.Label(SMALL_FONT, color=0x00FF00, text='12:00', y=-99))
+
 DISPLAY.show(GROUP)
+DISPLAY.refresh()
 
 NETWORK = Network(status_neopixel=board.NEOPIXEL, debug=False)
 NETWORK.connect()
@@ -429,12 +436,15 @@ while True:
     print()
 
     # Update moon image (GROUP[0])
-    FILENAME = 'moon/moon' + '{0:0>2}'.format(FRAME) + '.bmp'
-    BITMAP = displayio.OnDiskBitmap(open(FILENAME, 'rb'))
-    TILE_GRID = displayio.TileGrid(BITMAP, pixel_shader=displayio.ColorConverter())
-    TILE_GRID.x = 0
-    TILE_GRID.y = MOON_Y
-    GROUP[0] = TILE_GRID
+    try:
+        FILENAME = 'moon/moon' + '{0:0>2}'.format(FRAME) + '.bmp'
+        BITMAP = displayio.OnDiskBitmap(open(FILENAME, 'rb'))
+        TILE_GRID = displayio.TileGrid(BITMAP, pixel_shader=displayio.ColorConverter())
+        TILE_GRID.x = 0
+        TILE_GRID.y = MOON_Y
+        GROUP[0] = TILE_GRID
+    except Exception as e:
+        print(e)
 
     # Update percent value (5 labels: GROUP[1-4] for outline, [5] for text)
     if PERCENT >= 99.95:
@@ -527,6 +537,11 @@ while True:
     GROUP[7].x = CENTER_X - GROUP[7].bounding_box[2] // 2 - 1
     GROUP[7].y = TIME_Y + 10
 
-    # Force full repaint (splash screen sometimes sticks)
+    # Show the clock between 7AM and 11PM, otherwise go to sleep
+    if 7 < NOW.tm_hour < 23:
+        DISPLAY.show(GROUP)
+    else:
+        DISPLAY.show(SLEEPING)
+
     DISPLAY.refresh()
     time.sleep(REFRESH_DELAY)
