@@ -13,12 +13,14 @@
     (viergacht@gmail.com). Rawr!
 
     Changes by tantalusrur@gmail.com:
+    ---------------------------------
+    Support for portrait/landscape for event time format
     Add support for moon/sun rise/set for today/tomorrow
     Add support or sleep mode during certain hours
     Add global-ish brightness control
     Small code formatting and readability improvements
 
-    Version 1.5.2
+    Version 1.5.4
 """
 
 # pylint: disable=import-error
@@ -151,7 +153,10 @@ def strftime(time_struct):
 def display_event(name, event, icon):
     time_struct = time.localtime(event)
     print(name + ':' + strftime(time_struct))
-    XPOS = CENTER_X - (CLOCK_FACE[CLOCK_EVENT].bounding_box[2] + 6) // 2
+    if LANDSCAPE_MODE:
+        XPOS = 31
+    else:
+        XPOS = CENTER_X - (CLOCK_FACE[CLOCK_EVENT].bounding_box[2] + 6) // 2
     CLOCK_FACE[CLOCK_GLYPH].x = XPOS
     if name.startswith("Sun"):
         CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
@@ -162,7 +167,7 @@ def display_event(name, event, icon):
     CLOCK_FACE[CLOCK_EVENT].x = XPOS + 6
     CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
     # 24 hour times are too large to fit with the glyph
-    if time_struct.tm_hour > 12:
+    if time_struct.tm_hour > 12 and PORTRAIT_MODE:
         hour_string = str(time_struct.tm_hour - 12)
     elif time_struct.tm_hour > 0:
         hour_string = str(time_struct.tm_hour)
@@ -253,6 +258,12 @@ ACCEL.acceleration # Dummy read to blow out any startup residue
 time.sleep(0.1)
 DISPLAY.rotation = (int(((math.atan2(-ACCEL.acceleration.y, -ACCEL.acceleration.x) + math.pi) /
     (math.pi * 2) + 0.875) * 4) % 4) * 90
+if DISPLAY.rotation in (0, 180):
+    LANDSCAPE_MODE = True
+    PORTRAIT_MODE = False
+else:
+    LANDSCAPE_MODE = False
+    PORTRAIT_MODE = True
 
 LARGE_FONT = bitmap_font.load_font('/fonts/helvB12.bdf')
 SMALL_FONT = bitmap_font.load_font('/fonts/helvR10.bdf')
@@ -266,7 +277,7 @@ SYMBOL_FONT.load_glyphs('\u2191\u2193\u219F\u21A1')
 CLOCK_FACE = displayio.Group(max_size=10)
 SLEEPING = displayio.Group(max_size=1)
 
-# Element 0 is a stand-in item, later replaced with the moon phase bitmap
+# Element 0 is a stand-in image, later replaced with the moon phase bitmap
 # pylint: disable=bare-except
 try:
     FILENAME = 'splash-' + str(DISPLAY.rotation) + '.bmp'
@@ -439,12 +450,14 @@ while True:
             NEXT_SUN_EVENT = DAY.sunset
             SUN_RISEN = True
 
-    if DISPLAY.rotation in (0, 180): # Horizontal 'landscape' orientation
+    if LANDSCAPE_MODE: # Horizontal 'landscape' orientation
         CENTER_X = 48      # Text along right
         MOON_Y = 0         # Moon at left
         TIME_Y = 6         # Time at top right
         EVENT_Y = 26       # Rise/set at bottom right
+        EVENTS_24 = True   # In landscape mode, there's enough room for 24 event hour times
     else:                  # Vertical 'portrait' orientation
+        EVENTS_24 = True   # In portrain mode, there's only room for 12 event hour times
         CENTER_X = 16      # Text down center
         if MOON_RISEN or SUN_RISEN:
             MOON_Y = 0     # Moon at top
