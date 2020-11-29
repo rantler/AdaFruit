@@ -12,10 +12,13 @@
     123RF.com, wide splash images used with permission of artist Lew Lashmit
     (viergacht@gmail.com). Rawr!
 
-    Readability improvements and support for sunrise/sunset added by
-    tantalusrur@gmail.com
+    Changes by tantalusrur@gmail.com:
+    Add support for moon/sun rise/set for today/tomorrow
+    Add support or sleep mode during certain hours
+    Add global-ish brightness control
+    Small code formatting and readability improvements
 
-    Version 1.3.1
+    Version 1.5.2
 """
 
 # pylint: disable=import-error
@@ -41,22 +44,37 @@ except ImportError:
     print('WiFi secrets are kept in /secrets.py. Please add them there!')
     raise
 
-# CONFIGURABLE SETTINGS ----------------------------------------------------
+###############################################################################
+# CONFIGURABLE SETTINGS #######################################################
+###############################################################################
 
 TWELVE_HOUR = True      # If set, use 12-hour time vs 24-hour
+HOURS_BETWEEN_SYNC = 1  # Number of hours between syncs with time server
+SECONDS_PER_HOUR = 3600 # Number of seconds in one hour = 60 * 60
 COUNTDOWN = False       # If set, show time to vs time of rise/set events
 BIT_DEPTH = 6           # Ideally 6, but can set lower if RAM is tight
-REFRESH_DELAY = 60      # Seconds to wait between updates. Should be <= ~5
-GLOBAL_BRIGHTNESS = 0.1 # Text brightness value ranging between 0.0 - 1.0
+REFRESH_DELAY = 10      # Seconds to wait between screen updates. Should be 5 >= n <= 60
+GLOBAL_BRIGHTNESS = 0.5 # Text brightness value ranging between 0.0 - 1.0
 
-MOON_EVENT_COLOR = 0x333355
+MOON_EVENT_COLOR = 0x333388
 MOON_PERCENT_COLOR = 0xFFFF00
 SUN_EVENT_COLOR = 0xC04000
 TIME_COLOR = 0x808080
 DATE_COLOR = 0x808080
 
+# The meteorological data for TODAY and TOMORROW is kept in the PERIOD array.
+PERIOD = [None, None]
+TODAY = 0
+TOMORROW = 1
 
-# SOME UTILITY FUNCTIONS AND CLASSES ---------------------------------------
+TODAY_RISE = "\u2191" # ↑
+TODAY_SET = "\u2193" # ↓
+TOMORROW_RISE = "\u219F" # ↟
+TOMORROW_SET = "\u21A1" # ↡
+
+###############################################################################
+# SOME UTILITY FUNCTIONS FOR TIME MANIPULATION ################################
+###############################################################################
 
 def parse_time(timestring, is_dst=-1):
     """ Given a string of the format YYYY-MM-DDTHH:MM:SS.SS-HH:MM (and
@@ -81,7 +99,6 @@ def parse_time(timestring, is_dst=-1):
         -1, -1, is_dst
     )
 
-
 def update_time(timezone=None):
     """ Update system date/time from WorldTimeAPI public server;
         no account required. Pass in time zone string
@@ -102,8 +119,7 @@ def update_time(timezone=None):
     time_struct = parse_time(time_data[0], time_data[1])
     RTC().datetime = time_struct
 
-    return time_struct#, time_data[2]
-
+    return time_struct
 
 def hh_mm(time_struct):
     """ Given a time.struct_time, return a string as H:MM or HH:MM, either
@@ -124,6 +140,37 @@ def hh_mm(time_struct):
 
     return hour_string + ':' + '{0:0>2}'.format(time_struct.tm_min)
 
+def strftime(time_struct):
+    return (str(time_struct.tm_year) + '/' +
+        '{0:0>2}'.format(time_struct.tm_mon) + '/' +
+        '{0:0>2}'.format(time_struct.tm_mday) + ' ' +
+        '{0:0>2}'.format(time_struct.tm_hour) + ':' +
+        '{0:0>2}'.format(time_struct.tm_min) + ':' +
+        '{0:0>2}'.format(time_struct.tm_sec) + ' offset: ' + str(UTC_OFFSET))
+
+def display_event(name, event, icon):
+    time_struct = time.localtime(event)
+    print(name + ':' + strftime(time_struct))
+    XPOS = CENTER_X - (CLOCK_FACE[CLOCK_EVENT].bounding_box[2] + 6) // 2
+    CLOCK_FACE[CLOCK_GLYPH].x = XPOS
+    if name.startswith("Sun"):
+        CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+    else:
+        CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+    CLOCK_FACE[CLOCK_GLYPH].text = icon
+    CLOCK_FACE[CLOCK_GLYPH].y = EVENT_Y - 2
+    CLOCK_FACE[CLOCK_EVENT].x = XPOS + 6
+    CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
+    # 24 hour times are too large to fit with the glyph
+    if time_struct.tm_hour > 12:
+        hour_string = str(time_struct.tm_hour - 12)
+    elif time_struct.tm_hour > 0:
+        hour_string = str(time_struct.tm_hour)
+    CLOCK_FACE[CLOCK_EVENT].text = hour_string + ':' + '{0:0>2}'.format(time_struct.tm_min)
+
+###############################################################################
+# METEOROLOGICAL DATA CLASS ###################################################
+###############################################################################
 
 # pylint: disable=too-few-public-methods
 class EarthData():
@@ -140,32 +187,13 @@ class EarthData():
         sunrise  : Epoch time of sun rise within this 24-hour period.
         sunset   : Epoch time of sun set within this 24-hour period.
     """
-    def __init__(self, datetime, hours_ahead, utc_offset):
+    def __init__(self, datetime, utc_offset):
         """ Initialize EarthData object elements (see above) from a
             time.struct_time, hours to skip ahead (typically 0 or 24),
             and a UTC offset (as a string) and a query to the MET Norway
             Sunrise API (also provides lunar data), documented at:
             https://api.met.no/weatherapi/sunrise/2.0/documentation
         """
-        if hours_ahead:
-            # Can't change attribute in datetime struct, need to create
-            # a new one which will roll the date ahead as needed. Convert
-            # to epoch seconds and back for the offset to work
-            datetime = time.localtime(
-                time.mktime(
-                    time.struct_time(
-                        datetime.tm_year,
-                        datetime.tm_mon,
-                        datetime.tm_mday,
-                        datetime.tm_hour + hours_ahead,
-                        datetime.tm_min,
-                        datetime.tm_sec,
-                        -1,
-                        -1,
-                        -1
-                    )
-                )
-            )
         # strftime() not available here
         url = ('https://api.met.no/weatherapi/sunrise/2.0/.json' +
             '?lat=' + str(LATITUDE) +
@@ -174,13 +202,13 @@ class EarthData():
             '{0:0>2}'.format(datetime.tm_mon) + '-' +
             '{0:0>2}'.format(datetime.tm_mday) +
             '&offset=' + utc_offset)
-        print('Fetching moon data via for: ' +
-            '{0:0>2}'.format(datetime.tm_mon) + '/' +
-            '{0:0>2}'.format(datetime.tm_mday), url)
 
-        # pylint: disable=bare-except
-        for _ in range(5): # Retries
+        # https://api.met.no/weatherapi/sunrise/2.0/.json?lat=47.56&lon=-122.39&date=2020-11-28&offset=-08:00
+
+        for _ in range(5): # Number of retries
             try:
+                print('Fetching moon data via for: ' + '{0:0>2}'.format(datetime.tm_mon) + '/' +
+                    '{0:0>2}'.format(datetime.tm_mday), url)
                 full_data = json.loads(NETWORK.fetch_data(url))
                 location_data = full_data['location']['time'][0]
 
@@ -189,6 +217,7 @@ class EarthData():
                 self.midnight = time.mktime(parse_time(location_data['moonphase']['time']))
 
                 if 'sunrise' in location_data:
+                    print(location_data['sunrise']['time'])
                     self.sunrise = time.mktime(parse_time(location_data['sunrise']['time']))
                 else:
                     self.sunrise = None
@@ -213,8 +242,9 @@ class EarthData():
                 # (Might be a memory error, that should be handled different)
                 time.sleep(15)
 
-
-# ONE-TIME INITIALIZATION --------------------------------------------------
+###############################################################################
+# ONE-TIME INITIALIZATION #####################################################
+###############################################################################
 
 MATRIX = Matrix(bit_depth=BIT_DEPTH)
 DISPLAY = MATRIX.display
@@ -229,53 +259,55 @@ SMALL_FONT = bitmap_font.load_font('/fonts/helvR10.bdf')
 SYMBOL_FONT = bitmap_font.load_font('/fonts/6x10.bdf')
 LARGE_FONT.load_glyphs('0123456789:')
 SMALL_FONT.load_glyphs('0123456789:/.%')
-SYMBOL_FONT.load_glyphs('\u21A5\u21A7')
+SYMBOL_FONT.load_glyphs('\u2191\u2193\u219F\u21A1')
 
 # Display group is set up once, then we just shuffle items around later.
 # Order of creation here determines their stacking order.
-GROUP = displayio.Group(max_size=10)
+CLOCK_FACE = displayio.Group(max_size=10)
 SLEEPING = displayio.Group(max_size=1)
 
 # Element 0 is a stand-in item, later replaced with the moon phase bitmap
 # pylint: disable=bare-except
 try:
-    FILENAME = 'moon/splash-' + str(DISPLAY.rotation) + '.bmp'
+    FILENAME = 'splash-' + str(DISPLAY.rotation) + '.bmp'
     TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(
         open(FILENAME, 'rb')), pixel_shader=displayio.ColorConverter())
-    GROUP.append(TILE_GRID)
+    CLOCK_FACE.append(TILE_GRID)
 
     TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(
         open('sleeping.bmp', 'rb')), pixel_shader=displayio.ColorConverter())
     SLEEPING.append(TILE_GRID)
 
 except:
-    GROUP.append(adafruit_display_text.label.Label(SMALL_FONT,
+    CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
         color=color.set_brightness(0xFF0000, GLOBAL_BRIGHTNESS), text='AWOO'))
-    GROUP[0].x = (DISPLAY.width - GROUP[0].bounding_box[2] + 1) // 2
-    GROUP[0].y = DISPLAY.height // 2 - 1
+    CLOCK_FACE[0].x = (DISPLAY.width - CLOCK_FACE[0].bounding_box[2] + 1) // 2
+    CLOCK_FACE[0].y = DISPLAY.height // 2 - 1
 
 # Elements 1-4 are an outline around the moon percentage -- text labels
 # offset by 1 pixel up/down/left/right. Initial position is off the matrix,
 # updated on first refresh. Initial text value must be long enough for
 # longest anticipated string later.
 for i in range(4):
-    GROUP.append(adafruit_display_text.label.Label(SMALL_FONT, color=0, text='99.9%', y=-99))
+    CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT, color=0, text='99.9%', y=-99))
 
 # Element 5 is the moon percentage (on top of the outline labels)
-GROUP.append(adafruit_display_text.label.Label(SMALL_FONT,
+CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
     color=color.set_brightness(MOON_PERCENT_COLOR, GLOBAL_BRIGHTNESS), text='99.9%', y=-99))
 # Element 6 is the current time
-GROUP.append(adafruit_display_text.label.Label(LARGE_FONT,
+CLOCK_FACE.append(adafruit_display_text.label.Label(LARGE_FONT,
     color=color.set_brightness(TIME_COLOR, GLOBAL_BRIGHTNESS), text='12:00', y=-99))
 # Element 7 is the current date
-GROUP.append(adafruit_display_text.label.Label(SMALL_FONT,
+CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
     color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text='12/31', y=-99))
 # Element 8 is a symbol indicating next rise or set - Color is overridden by event colors
-GROUP.append(adafruit_display_text.label.Label(SYMBOL_FONT, color=0x00FF00, text='x', y=-99))
+CLOCK_GLYPH = 8
+CLOCK_FACE.append(adafruit_display_text.label.Label(SYMBOL_FONT, color=0x00FF00, text='x', y=-99))
 # Element 9 is the time of (or time to) next rise/set event - Color is overridden by event colors
-GROUP.append(adafruit_display_text.label.Label(SMALL_FONT, color=0x00FF00, text='12:00', y=-99))
+CLOCK_EVENT = 9
+CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT, color=0x00FF00, text='12:00', y=-99))
 
-DISPLAY.show(GROUP)
+DISPLAY.show(CLOCK_FACE)
 DISPLAY.refresh()
 
 NETWORK = Network(status_neopixel=board.NEOPIXEL, debug=False)
@@ -307,62 +339,63 @@ except:
 try:
     UTC_OFFSET = secrets['offset']
 except:
-    UTC_OFFSET = '-08:00'
+    UTC_OFFSET = '-08:00' # If all else fails, default to PST
 
 # Set initial clock time, also fetch initial UTC offset while
 # here (NOT stored in secrets.py as it may change with DST).
 # pylint: disable=bare-except
 try:
+    print("Setting initial clock time")
     DATETIME = update_time(TIMEZONE)
 
 except Exception as e:
-    print(e)
+    print("Error setting initial clock time: " + str(e))
     DATETIME = time.localtime()
     # time.timezone doesn't exist. wtf? smh...
     # DATETIME, UTC_OFFSET = time.localtime(), '-{0:0>2}:00'.format(time.timezone / 3600)
 
 LAST_SYNC = time.mktime(DATETIME)
 
-# Poll server for moon data for current 24-hour period and +24 ahead
-PERIOD = []
+# Poll server for moon data for current TODAY and TOMORROW.
+PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
+PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
 
-for DAY in range(2):
-    PERIOD.append(EarthData(DATETIME, DAY * 24, UTC_OFFSET))
+# PERIOD[TODAY] is the current 24-hour time period we're in. PERIOD[TOMORROW]
+# is the following 24 hours. Data is shifted and new data fetched each day.
 
-# PERIOD[0] is the current 24-hour time period we're in. PERIOD[1] is the
-# following 24 hours. Data is shifted down and new data fetched as days
-# expire. Thought we might need a PERIOD[2] for certain circumstances but
-# it appears not, that's changed easily enough if needed.
+# This is a count down for the 8 events: sunrise/sunset/moonrise/moonset x today/tomorrow
+DIURNAL_EVENT = 8
 
-FLIP_FLOP = False
-
-# MAIN LOOP ----------------------------------------------------------------
+###############################################################################
+# MAIN LOOP ###################################################################
+###############################################################################
 
 while True:
     gc.collect()
     NOW = time.time() # Current epoch time in seconds
 
-    # Sync with time server every ~12 hours
-    if NOW - LAST_SYNC > 12 * 60 * 60:
+    # Periodically sync with time server since on-board clock is inaccurate
+    if NOW - LAST_SYNC > HOURS_BETWEEN_SYNC * SECONDS_PER_HOUR:
+        print("Syncing with time server")
         try:
             DATETIME, UTC_OFFSET = update_time(TIMEZONE)
             LAST_SYNC = time.mktime(DATETIME)
             continue # Time may have changed; refresh NOW value
 
-        except:
+        except Exception as e:
+            print("Error syncing with time server: " + str(e))
             # update_time() can throw an exception if time server doesn't
             # respond. That's OK, keep running with our current time, and
-            # push sync time ahead to retry in 30 minutes (don't overwhelm
-            # the server with repeated queries).
-            LAST_SYNC += 30 * 60 * 60 # 30 minutes -> seconds
+            # push sync time ahead to retry in 30 minutes.
+            LAST_SYNC += 30 * SECONDS_PER_HOUR # 30 minutes -> seconds
 
     # If PERIOD has expired, move data down and fetch new +24-hour data
-    if NOW >= PERIOD[1].midnight:
-        PERIOD[0] = PERIOD[1]
-        PERIOD[1] = EarthData(time.localtime(), 24, UTC_OFFSET)
+    if NOW >= PERIOD[TOMORROW].midnight:
+        PERIOD[TODAY] = PERIOD[TOMORROW]
+        PERIOD[TOMORROW] = EarthData(time.localtime(), 24, UTC_OFFSET)
 
     # Determine weighting of tomorrow's phase vs today's, using current time
-    RATIO = ((NOW - PERIOD[0].midnight) / (PERIOD[1].midnight - PERIOD[0].midnight))
+    RATIO = ((NOW - PERIOD[TODAY].midnight) / (PERIOD[TOMORROW].midnight - PERIOD[TODAY].midnight))
 
     # Determine moon phase 'age'
     # 0.0  = new moon
@@ -370,12 +403,12 @@ while True:
     # 0.5  = full moon
     # 0.75 = last quarter
     # 1.0  = new moon
-    if PERIOD[0].age < PERIOD[1].age:
-        AGE = (PERIOD[0].age + (PERIOD[1].age - PERIOD[0].age) * RATIO) % 1.0
+    if PERIOD[TODAY].age < PERIOD[TOMORROW].age:
+        AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age - PERIOD[TODAY].age) * RATIO) % 1.0
     else: # Handle age wraparound (1.0 -> 0.0)
         # If tomorrow's age is less than today's, it indicates a new moon
         # crossover. Add 1 to tomorrow's age when computing age delta.
-        AGE = (PERIOD[0].age + (PERIOD[1].age + 1 - PERIOD[0].age) * RATIO) % 1.0
+        AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age + 1 - PERIOD[TODAY].age) * RATIO) % 1.0
 
     # AGE can be used for direct lookup to moon bitmap (0 to 99) -- these
     # images are pre-rendered for a linear timescale (solar terminator moves
@@ -388,16 +421,7 @@ while True:
     else:          # Full -> last quarter -> new
         PERCENT = (1 + math.cos((AGE - 0.5) * 2 * math.pi)) * 50
 
-    # Find next rise/set event, complicated by the fact that some 24-hour
-    # periods might not have one or the other (but usually do) due to the
-    # Moon rising ~50 mins later each day. This uses a brute force approach,
-    # working backwards through the time periods to locate rise/set events
-    # that A) exist in that 24-hour period (are not None), B) are still in
-    # the future, and C) are closer than the last guess. What's left at the
-    # end is the next rise or set (and the inverse of the event type tells
-    # us whether Moon's currently risen or not).
     NEXT_MOON_EVENT = PERIOD[1].midnight + 100000 # Force first match
-
     for DAY in reversed(PERIOD):
         if DAY.moonrise and NEXT_MOON_EVENT >= DAY.moonrise >= NOW:
             NEXT_MOON_EVENT = DAY.moonrise
@@ -406,9 +430,7 @@ while True:
             NEXT_MOON_EVENT = DAY.moonset
             MOON_RISEN = True
 
-    # Now same for sun events
     NEXT_SUN_EVENT = PERIOD[1].midnight + 100000 # Force first match
-
     for DAY in reversed(PERIOD):
         if DAY.sunrise and NEXT_SUN_EVENT >= DAY.sunrise >= NOW:
             NEXT_SUN_EVENT = DAY.sunrise
@@ -435,18 +457,18 @@ while True:
 
     print()
 
-    # Update moon image (GROUP[0])
+    # Update moon image (CLOCK_FACE[0])
     try:
         FILENAME = 'moon/moon' + '{0:0>2}'.format(FRAME) + '.bmp'
         BITMAP = displayio.OnDiskBitmap(open(FILENAME, 'rb'))
         TILE_GRID = displayio.TileGrid(BITMAP, pixel_shader=displayio.ColorConverter())
         TILE_GRID.x = 0
         TILE_GRID.y = MOON_Y
-        GROUP[0] = TILE_GRID
+        CLOCK_FACE[0] = TILE_GRID
     except Exception as e:
         print(e)
 
-    # Update percent value (5 labels: GROUP[1-4] for outline, [5] for text)
+    # Update percent value (5 labels: CLOCK_FACE[1-4] for outline, [5] for text)
     if PERCENT >= 99.95:
         STRING = '100%'
     else:
@@ -454,94 +476,67 @@ while True:
     print(STRING, 'full')
 
     LOCAL_TIME = time.localtime()
-    print(str(LOCAL_TIME.tm_year) + '/' +
-        '{0:0>2}'.format(LOCAL_TIME.tm_mon) + '/' +
-        '{0:0>2}'.format(LOCAL_TIME.tm_mday) + ' ' +
-        '{0:0>2}'.format(LOCAL_TIME.tm_hour) + ':' +
-        '{0:0>2}'.format(LOCAL_TIME.tm_min) + ':' +
-        '{0:0>2}'.format(LOCAL_TIME.tm_sec) + ' offset: ' + str(UTC_OFFSET))
+    print(strftime(LOCAL_TIME))
 
     # Set element 5 first, use its size and position for setting others
-    GROUP[5].text = STRING
-    GROUP[5].x = 16 - GROUP[5].bounding_box[2] // 2
-    GROUP[5].y = MOON_Y + 16
+    CLOCK_FACE[5].text = STRING
+    CLOCK_FACE[5].x = 16 - CLOCK_FACE[5].bounding_box[2] // 2
+    CLOCK_FACE[5].y = MOON_Y + 16
 
     for _ in range(1, 5):
-        GROUP[_].text = GROUP[5].text
+        CLOCK_FACE[_].text = CLOCK_FACE[5].text
 
-    GROUP[1].x, GROUP[1].y = GROUP[5].x, GROUP[5].y - 1 # Up 1 pixel
-    GROUP[2].x, GROUP[2].y = GROUP[5].x - 1, GROUP[5].y # Left
-    GROUP[3].x, GROUP[3].y = GROUP[5].x + 1, GROUP[5].y # Right
-    GROUP[4].x, GROUP[4].y = GROUP[5].x, GROUP[5].y + 1 # Down
+    CLOCK_FACE[1].x, CLOCK_FACE[1].y = CLOCK_FACE[5].x, CLOCK_FACE[5].y - 1 # Up 1 pixel
+    CLOCK_FACE[2].x, CLOCK_FACE[2].y = CLOCK_FACE[5].x - 1, CLOCK_FACE[5].y # Left
+    CLOCK_FACE[3].x, CLOCK_FACE[3].y = CLOCK_FACE[5].x + 1, CLOCK_FACE[5].y # Right
+    CLOCK_FACE[4].x, CLOCK_FACE[4].y = CLOCK_FACE[5].x, CLOCK_FACE[5].y + 1 # Down
 
-    # Update next-event time (GROUP[8] and [9])
+    # Update next-event time (CLOCK_FACE[CLOCK_GLYPH] and [CLOCK_EVENT])
     # Do this before time because we need uncorrupted NOW value
 
-    if FLIP_FLOP is True:
-      FLIP_FLOP = False
-      EVENT_TIME = time.localtime(NEXT_MOON_EVENT) # Convert to struct for later
-      if COUNTDOWN: # Show NEXT_MOON_EVENT as countdown to event
-          NEXT_MOON_EVENT -= NOW # Time until (vs time of) next rise/set
-          MINUTES = NEXT_MOON_EVENT // 60
-          STRING = str(MINUTES // 60) + ':' + '{0:0>2}'.format(MINUTES % 60)
-      else: # Show NEXT_MOON_EVENT in clock time
-          STRING = hh_mm(EVENT_TIME)
-      # Show moon event time in blue/grey
-      GROUP[8].color = GROUP[9].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
-    else:
-      FLIP_FLOP = True
-      EVENT_TIME = time.localtime(NEXT_SUN_EVENT) # Convert to struct for later
-      if COUNTDOWN: # Show NEXT_SUN_EVENT as countdown to event
-          NEXT_SUN_EVENT -= NOW # Time until (vs time of) next rise/set
-          MINUTES = NEXT_SUN_EVENT // 60
-          STRING = str(MINUTES // 60) + ':' + '{0:0>2}'.format(MINUTES % 60)
-      else: # Show NEXT_SUN_EVENT in clock time
-          STRING = hh_mm(EVENT_TIME)
-      # Show sun event time amber
-      GROUP[8].color = GROUP[9].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
-
-    GROUP[9].text = STRING # TODO Fix spacing issues for values like 11 :38
-    XPOS = CENTER_X - (GROUP[9].bounding_box[2] + 6) // 2
-    GROUP[8].x = XPOS
-
-    # Next event is MOONSET or SUNSET
-    if MOON_RISEN or SUN_RISEN:
-        GROUP[8].text = '\u21A7' # Downward arrow from bar
-        GROUP[8].y = EVENT_Y - 2
-        if FLIP_FLOP:
-            print('Sunset:', STRING)
-        else:
-            print('Moonset:', STRING)
-
-    # Next event is MOONRISE or SUNRISE
-    else:
-        GROUP[8].text = '\u21A5' # Upward arrow from bar
-        GROUP[8].y = EVENT_Y - 1
-        if FLIP_FLOP:
-            print('Sunrise:', STRING)
-        else:
-            print('Moonrise:', STRING)
-
-    GROUP[9].x = XPOS + 6
-    GROUP[9].y = EVENT_Y
+    if DIURNAL_EVENT == 8:
+        display_event("Moonset tomorrow", PERIOD[TOMORROW].moonset, TOMORROW_SET)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 7:
+        display_event("Moonrise tomorrow", PERIOD[TOMORROW].moonrise, TOMORROW_RISE)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 6:
+        display_event("Sunset tomorrow", PERIOD[TOMORROW].sunset, TOMORROW_SET)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 5:
+        display_event("Sunrise tomorrow", PERIOD[TOMORROW].sunrise, TOMORROW_RISE)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 4:
+        display_event("Moonset today", PERIOD[TODAY].moonset, TODAY_SET)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 3:
+        display_event("Moonrise today", PERIOD[TODAY].moonrise, TODAY_RISE)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 2:
+        display_event("Sunset today", PERIOD[TODAY].sunset, TODAY_SET)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 1:
+        display_event("Sunrise today", PERIOD[TODAY].sunrise, TODAY_RISE)
+        DIURNAL_EVENT = 8
 
     # Update time
     NOW = time.localtime()
     STRING = hh_mm(NOW)
-    GROUP[6].text = STRING
-    GROUP[6].x = CENTER_X - GROUP[6].bounding_box[2] // 2
-    GROUP[6].y = TIME_Y
+    CLOCK_FACE[6].text = STRING
+    CLOCK_FACE[6].x = CENTER_X - CLOCK_FACE[6].bounding_box[2] // 2
+    CLOCK_FACE[6].y = TIME_Y
     # Update date
     STRING = str(NOW.tm_mon) + '/ ' + str(NOW.tm_mday)
-    GROUP[7].text = STRING
-    GROUP[7].x = CENTER_X - GROUP[7].bounding_box[2] // 2 - 1
-    GROUP[7].y = TIME_Y + 10
+    CLOCK_FACE[7].text = STRING
+    CLOCK_FACE[7].x = CENTER_X - CLOCK_FACE[7].bounding_box[2] // 2 - 1
+    CLOCK_FACE[7].y = TIME_Y + 10
 
     # Show the clock between 7AM and 11PM, otherwise go to sleep
     if 7 < NOW.tm_hour < 23:
-        DISPLAY.show(GROUP)
+        DISPLAY.show(CLOCK_FACE)
     else:
         DISPLAY.show(SLEEPING)
+        time.sleep(HOURS_BETWEEN_SYNC) # Sleep for one sync interval before checking again
 
     DISPLAY.refresh()
     time.sleep(REFRESH_DELAY)
