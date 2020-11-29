@@ -1,5 +1,8 @@
 # Moon Clock
 
+Memory size of this project is approaching the limits of CircuitPython so be aware that additional code
+changes can sometimes behave inconsistently and/or result in Memory Errors.
+
 Note, the BMP images must be 8-bit indexed color or they will not render. You can use ImageMagick, or
 ImageScience to convert an existing BMP file to 8-bit using a command like this one:
 
