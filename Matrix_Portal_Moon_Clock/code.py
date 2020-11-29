@@ -20,7 +20,7 @@
     Add global-ish brightness control
     Small code formatting and readability improvements
 
-    Version 1.5.4
+    Version 1.5.6
 """
 
 # pylint: disable=import-error
@@ -508,28 +508,28 @@ while True:
     # Do this before time because we need uncorrupted NOW value
 
     if DIURNAL_EVENT == 8:
-        display_event("Moonset tomorrow", PERIOD[TOMORROW].moonset, TOMORROW_SET)
+        display_event("Sunrise today", PERIOD[TODAY].sunrise, TODAY_RISE)
         DIURNAL_EVENT -= 1
     elif DIURNAL_EVENT == 7:
-        display_event("Moonrise tomorrow", PERIOD[TOMORROW].moonrise, TOMORROW_RISE)
-        DIURNAL_EVENT -= 1
-    elif DIURNAL_EVENT == 6:
-        display_event("Sunset tomorrow", PERIOD[TOMORROW].sunset, TOMORROW_SET)
-        DIURNAL_EVENT -= 1
-    elif DIURNAL_EVENT == 5:
-        display_event("Sunrise tomorrow", PERIOD[TOMORROW].sunrise, TOMORROW_RISE)
-        DIURNAL_EVENT -= 1
-    elif DIURNAL_EVENT == 4:
-        display_event("Moonset today", PERIOD[TODAY].moonset, TODAY_SET)
-        DIURNAL_EVENT -= 1
-    elif DIURNAL_EVENT == 3:
-        display_event("Moonrise today", PERIOD[TODAY].moonrise, TODAY_RISE)
-        DIURNAL_EVENT -= 1
-    elif DIURNAL_EVENT == 2:
         display_event("Sunset today", PERIOD[TODAY].sunset, TODAY_SET)
         DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 6:
+        display_event("Moonrise today", PERIOD[TODAY].moonrise, TODAY_RISE)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 5:
+        display_event("Moonset today", PERIOD[TODAY].moonset, TODAY_SET)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 4:
+        display_event("Sunrise tomorrow", PERIOD[TOMORROW].sunrise, TOMORROW_RISE)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 3:
+        display_event("Sunset tomorrow", PERIOD[TOMORROW].sunset, TOMORROW_SET)
+        DIURNAL_EVENT -= 1
+    elif DIURNAL_EVENT == 2:
+        display_event("Moonrise tomorrow", PERIOD[TOMORROW].moonrise, TOMORROW_RISE)
+        DIURNAL_EVENT -= 1
     elif DIURNAL_EVENT == 1:
-        display_event("Sunrise today", PERIOD[TODAY].sunrise, TODAY_RISE)
+        display_event("Moonset tomorrow", PERIOD[TOMORROW].moonset, TOMORROW_SET)
         DIURNAL_EVENT = 8
 
     # Update time
@@ -549,7 +549,6 @@ while True:
         DISPLAY.show(CLOCK_FACE)
     else:
         DISPLAY.show(SLEEPING)
-        time.sleep(HOURS_BETWEEN_SYNC) # Sleep for one sync interval before checking again
 
     DISPLAY.refresh()
     time.sleep(REFRESH_DELAY)
