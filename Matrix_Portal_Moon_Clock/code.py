@@ -18,10 +18,10 @@
     Add support for moon/sun rise/set for today/tomorrow
     Add support or sleep mode during certain hours
     Add global-ish brightness control
-    Small code formatting and readability improvements
-
-    Version 1.5.6
+    Code simplification, formatting and readability improvements
 """
+
+print("VERSION 1.5.8")
 
 # pylint: disable=import-error
 import gc
@@ -46,9 +46,7 @@ except ImportError:
     print('WiFi secrets are kept in /secrets.py. Please add them there!')
     raise
 
-###############################################################################
 # CONFIGURABLE SETTINGS #######################################################
-###############################################################################
 
 TWELVE_HOUR = True      # If set, use 12-hour time vs 24-hour
 HOURS_BETWEEN_SYNC = 1  # Number of hours between syncs with time server
@@ -74,9 +72,7 @@ TODAY_SET = "\u2193" # ↓
 TOMORROW_RISE = "\u219F" # ↟
 TOMORROW_SET = "\u21A1" # ↡
 
-###############################################################################
 # SOME UTILITY FUNCTIONS FOR TIME MANIPULATION ################################
-###############################################################################
 
 def parse_time(timestring, is_dst=-1):
     """ Given a string of the format YYYY-MM-DDTHH:MM:SS.SS-HH:MM (and
@@ -124,11 +120,7 @@ def update_time(timezone=None):
     return time_struct
 
 def hh_mm(time_struct):
-    """ Given a time.struct_time, return a string as H:MM or HH:MM, either
-        12- or 24-hour style depending on global TWELVE_HOUR setting.
-        This is ONLY for 'clock time,' NOT for countdown time, which is
-        handled separately in the one spot where it's needed.
-    """
+    # Given a time.struct_time, return a string as H:MM or HH:MM, in either 12 or 24 hour style.
 
     if TWELVE_HOUR:
         if time_struct.tm_hour > 12:
@@ -152,7 +144,7 @@ def strftime(time_struct):
 
 def display_event(name, event, icon):
     time_struct = time.localtime(event)
-    print(name + ':' + strftime(time_struct))
+    print(name + ': ' + strftime(time_struct))
     if LANDSCAPE_MODE:
         XPOS = 31
     else:
@@ -173,19 +165,15 @@ def display_event(name, event, icon):
         hour_string = str(time_struct.tm_hour)
     CLOCK_FACE[CLOCK_EVENT].text = hour_string + ':' + '{0:0>2}'.format(time_struct.tm_min)
 
-###############################################################################
 # METEOROLOGICAL DATA CLASS ###################################################
-###############################################################################
 
 # pylint: disable=too-few-public-methods
 class EarthData():
-    """ Class holding lunar data for a given day (00:00:00 to 23:59:59).
-        App uses two of these -- one for the current day, and one for the
-        following day -- then some interpolations and such can be made.
-        Elements include:
-        age      : Moon phase 'age' at midnight (start of period)
-                   expressed from 0.0 (new moon) through 0.5 (full moon)
-                   to 1.0 (next new moon).
+    """ Class holding lunar data for a given day (00:00:00 to 23:59:59). App uses two of these -- one for the
+        current day, and one for the following day -- then some interpolations and such can be made.
+
+        age      : Moon phase 'age' at midnight (start of period) expressed from 0.0 (new moon) through 0.5
+                   (full moon) to 1.0 (next new moon).
         midnight : Epoch time in seconds @ midnight (start of period).
         moonrise : Epoch time of moon rise within this 24-hour period.
         moonset  : Epoch time of moon set within this 24-hour period.
@@ -193,11 +181,12 @@ class EarthData():
         sunset   : Epoch time of sun set within this 24-hour period.
     """
     def __init__(self, datetime, utc_offset):
-        """ Initialize EarthData object elements (see above) from a
-            time.struct_time, hours to skip ahead (typically 0 or 24),
-            and a UTC offset (as a string) and a query to the MET Norway
-            Sunrise API (also provides lunar data), documented at:
-            https://api.met.no/weatherapi/sunrise/2.0/documentation
+        """ Initialize EarthData object elements (see above) from a time.struct_time, hours to skip ahead
+            (typically 0 or 24), and a UTC offset (as a string) and a query to the MET Norway Sunrise API
+            and provides lunar data. Documented at https://api.met.no/weatherapi/sunrise/2.0/documentation
+
+            Example URL:
+            https://api.met.no/weatherapi/sunrise/2.0/.json?lat=47.56&lon=-122.39&date=2020-11-28&offset=-08:00
         """
         # strftime() not available here
         url = ('https://api.met.no/weatherapi/sunrise/2.0/.json' +
@@ -208,8 +197,6 @@ class EarthData():
             '{0:0>2}'.format(datetime.tm_mday) +
             '&offset=' + utc_offset)
 
-        # https://api.met.no/weatherapi/sunrise/2.0/.json?lat=47.56&lon=-122.39&date=2020-11-28&offset=-08:00
-
         for _ in range(5): # Number of retries
             try:
                 print('Fetching moon data via for: ' + '{0:0>2}'.format(datetime.tm_mon) + '/' +
@@ -217,7 +204,6 @@ class EarthData():
                 full_data = json.loads(NETWORK.fetch_data(url))
                 location_data = full_data['location']['time'][0]
 
-                # Reconstitute JSON data into the elements we need
                 self.age = float(location_data['moonphase']['value']) / 100
                 self.midnight = time.mktime(parse_time(location_data['moonphase']['time']))
 
@@ -239,17 +225,13 @@ class EarthData():
                 else:
                     self.moonset = None
 
-                return # Success!
+                return
 
             except Exception as e:
-                print(e)
-                # Server error (maybe), try again after 15 seconds.
-                # (Might be a memory error, that should be handled different)
+                print('Fetching moon data via for: ' + str(e))
                 time.sleep(15)
 
-###############################################################################
 # ONE-TIME INITIALIZATION #####################################################
-###############################################################################
 
 MATRIX = Matrix(bit_depth=BIT_DEPTH)
 DISPLAY = MATRIX.display
@@ -278,7 +260,6 @@ CLOCK_FACE = displayio.Group(max_size=10)
 SLEEPING = displayio.Group(max_size=1)
 
 # Element 0 is a stand-in image, later replaced with the moon phase bitmap
-# pylint: disable=bare-except
 try:
     FILENAME = 'splash-' + str(DISPLAY.rotation) + '.bmp'
     TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(
@@ -289,7 +270,8 @@ try:
         open('sleeping.bmp', 'rb')), pixel_shader=displayio.ColorConverter())
     SLEEPING.append(TILE_GRID)
 
-except:
+except Exception as e:
+    print("Error loading image(s): " + str(e))
     CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
         color=color.set_brightness(0xFF0000, GLOBAL_BRIGHTNESS), text='AWOO'))
     CLOCK_FACE[0].x = (DISPLAY.width - CLOCK_FACE[0].bounding_box[2] + 1) // 2
@@ -324,8 +306,7 @@ DISPLAY.refresh()
 NETWORK = Network(status_neopixel=board.NEOPIXEL, debug=False)
 NETWORK.connect()
 
-# Fetch latitude/longitude from secrets.py. If not present, use
-# IP geolocation. This only needs to be done once, at startup!
+# Fetch latitude/longitude from secrets.py. If not present, use IP geolocation.
 try:
     LATITUDE = secrets['latitude']
     LONGITUDE = secrets['longitude']
@@ -339,22 +320,18 @@ except KeyError:
     ))
     print('Using IP geolocation: ', LATITUDE, LONGITUDE)
 
-# Load time zone string from secrets.py, else IP geolocation for this too
-# (http://worldtimeapi.org/api/timezone for list).
+# Load timezone from secrets.py, or use IP geolocation. See http://worldtimeapi.org/api/timezone
 try:
     TIMEZONE = secrets['timezone'] # e.g. 'America/Los_Angeles'
 
 except:
-    TIMEZONE = None # IP geolocation
+    TIMEZONE = None # Use IP geolocation
 
 try:
     UTC_OFFSET = secrets['offset']
 except:
     UTC_OFFSET = '-08:00' # If all else fails, default to PST
 
-# Set initial clock time, also fetch initial UTC offset while
-# here (NOT stored in secrets.py as it may change with DST).
-# pylint: disable=bare-except
 try:
     print("Setting initial clock time")
     DATETIME = update_time(TIMEZONE)
@@ -362,8 +339,6 @@ try:
 except Exception as e:
     print("Error setting initial clock time: " + str(e))
     DATETIME = time.localtime()
-    # time.timezone doesn't exist. wtf? smh...
-    # DATETIME, UTC_OFFSET = time.localtime(), '-{0:0>2}:00'.format(time.timezone / 3600)
 
 LAST_SYNC = time.mktime(DATETIME)
 
@@ -371,15 +346,10 @@ LAST_SYNC = time.mktime(DATETIME)
 PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
 PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
 
-# PERIOD[TODAY] is the current 24-hour time period we're in. PERIOD[TOMORROW]
-# is the following 24 hours. Data is shifted and new data fetched each day.
-
 # This is a count down for the 8 events: sunrise/sunset/moonrise/moonset x today/tomorrow
 DIURNAL_EVENT = 8
 
-###############################################################################
 # MAIN LOOP ###################################################################
-###############################################################################
 
 while True:
     gc.collect()
