@@ -56,11 +56,11 @@ BIT_DEPTH = 6           # Ideally 6, but can set lower if RAM is tight
 REFRESH_DELAY = 10      # Seconds to wait between screen updates. Should be 5 >= n <= 60
 GLOBAL_BRIGHTNESS = 0.5 # Text brightness value ranging between 0.0 - 1.0
 
-MOON_EVENT_COLOR = 0x333388
-MOON_PERCENT_COLOR = 0xFFFF00
-SUN_EVENT_COLOR = 0xC04000
-TIME_COLOR = 0x808080
-DATE_COLOR = 0x808080
+MOON_EVENT_COLOR = 0xB8BFC9 #(grey blue)
+MOON_PERCENT_COLOR = 0x9B24F9 #(purple)
+SUN_EVENT_COLOR = 0xFBDE2C #(sun yellow)
+TIME_COLOR = 0xA00000 #(LED red)
+DATE_COLOR = 0x46BBDF #(aqua)
 
 # The meteorological data for TODAY and TOMORROW is kept in the PERIOD array.
 PERIOD = [None, None]
@@ -427,7 +427,7 @@ while True:
         EVENT_Y = 26       # Rise/set at bottom right
         EVENTS_24 = True   # In landscape mode, there's enough room for 24 event hour times
     else:                  # Vertical 'portrait' orientation
-        EVENTS_24 = True   # In portrain mode, there's only room for 12 event hour times
+        EVENTS_24 = True   # In portrait mode, there's only room for 12 event hour times
         CENTER_X = 16      # Text down center
         if MOON_RISEN or SUN_RISEN:
             MOON_Y = 0     # Moon at top
