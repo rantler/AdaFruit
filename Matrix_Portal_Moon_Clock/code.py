@@ -21,7 +21,7 @@
     Code simplification, formatting and readability improvements
 """
 
-print("VERSION 1.5.8")
+print("VERSION 1.5.9")
 
 # pylint: disable=import-error
 import gc
@@ -359,7 +359,7 @@ while True:
     if NOW - LAST_SYNC > HOURS_BETWEEN_SYNC * SECONDS_PER_HOUR:
         print("Syncing with time server")
         try:
-            DATETIME, UTC_OFFSET = update_time(TIMEZONE)
+            DATETIME = update_time(TIMEZONE)
             LAST_SYNC = time.mktime(DATETIME)
             continue # Time may have changed; refresh NOW value
 
@@ -370,10 +370,10 @@ while True:
             # push sync time ahead to retry in 30 minutes.
             LAST_SYNC += 30 * SECONDS_PER_HOUR # 30 minutes -> seconds
 
-    # If PERIOD has expired, move data down and fetch new +24-hour data
+    # If PERIOD has expired, fetch the next set of days
     if NOW >= PERIOD[TOMORROW].midnight:
-        PERIOD[TODAY] = PERIOD[TOMORROW]
-        PERIOD[TOMORROW] = EarthData(time.localtime(), 24, UTC_OFFSET)
+        PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
+        PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
 
     # Determine weighting of tomorrow's phase vs today's, using current time
     RATIO = ((NOW - PERIOD[TODAY].midnight) / (PERIOD[TOMORROW].midnight - PERIOD[TODAY].midnight))
