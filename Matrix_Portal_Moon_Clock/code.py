@@ -1,27 +1,4 @@
-""" MOON PHASE CLOCK for Adafruit Matrix Portal: displays current time, lunar
-    phase and time of next moonrise/sunrise or moonset/sunset. Requires WiFi
-    internet access.
-
-    Uses IP geolocation if timezone and/or lat/lon not provided in secrets.py
-
-    Written by Phil 'PaintYourDragon' Burgess for Adafruit Industries.
-    MIT license, all text above must be included in any redistribution.
-
-    BDF fonts from the X.Org project. Startup 'splash' images should not be
-    included in derivative projects, thanks. Tall splash images licensed from
-    123RF.com, wide splash images used with permission of artist Lew Lashmit
-    (viergacht@gmail.com). Rawr!
-
-    Changes by tantalusrur@gmail.com:
-    ---------------------------------
-    Support for portrait/landscape for event time format
-    Add support for moon/sun rise/set for today/tomorrow
-    Add support or sleep mode during certain hours
-    Add global-ish brightness control
-    Code simplification, formatting and readability improvements
-"""
-
-print("VERSION 1.5.9")
+print("VERSION 1.5.9.1")
 
 # pylint: disable=import-error
 import gc
@@ -38,6 +15,7 @@ from adafruit_bitmap_font import bitmap_font
 import adafruit_display_text.label
 import adafruit_lis3dh
 import color
+import sys
 
 try:
     from secrets import secrets
@@ -45,8 +23,6 @@ try:
 except ImportError:
     print('WiFi secrets are kept in /secrets.py. Please add them there!')
     raise
-
-# CONFIGURABLE SETTINGS #######################################################
 
 TWELVE_HOUR = True      # If set, use 12-hour time vs 24-hour
 HOURS_BETWEEN_SYNC = 1  # Number of hours between syncs with time server
@@ -72,19 +48,15 @@ TODAY_SET = "\u2193" # ↓
 TOMORROW_RISE = "\u219F" # ↟
 TOMORROW_SET = "\u21A1" # ↡
 
-# SOME UTILITY FUNCTIONS FOR TIME MANIPULATION ################################
-
 def parse_time(timestring, is_dst=-1):
-    """ Given a string of the format YYYY-MM-DDTHH:MM:SS.SS-HH:MM (and
-        optionally a DST flag), convert to and return an equivalent
-        time.struct_time (strptime() isn't available here). Calling function
-        can use time.mktime() on result if epoch seconds is needed instead.
-        Time string is assumed local time; UTC offset is ignored. If seconds
-        value includes a decimal fraction it's ignored.
+    """ Given a string of the format YYYY-MM-DDTHH:MM:SS.SS-HH:MM and optional DST flag, convert to and
+        return a time.struct_time since strptime() isn't available here. Calling function can use
+        time.mktime() on result if epoch seconds is needed instead. Time string is assumed local time. UTC
+        offset is ignored. If seconds value includes a decimal fraction it's ignored.
     """
 
-    date_time = timestring.split('T')        # Separate into date and time
-    year_month_day = date_time[0].split('-') # Separate time into Y/M/D
+    date_time = timestring.split('T')
+    year_month_day = date_time[0].split('-')
     hour_minute_second = date_time[1].split('+')[0].split('-')[0].split(':')
 
     return time.struct_time(
@@ -98,14 +70,9 @@ def parse_time(timestring, is_dst=-1):
     )
 
 def update_time(timezone=None):
-    """ Update system date/time from WorldTimeAPI public server;
-        no account required. Pass in time zone string
-        (http://worldtimeapi.org/api/timezone for list)
-        or None to use IP geolocation. Returns current local time as a
-        time.struct_time and UTC offset as string. This may throw an
-        exception on fetch_data() - it is NOT CAUGHT HERE, should be
-        handled in the calling code because different behaviors may be
-        needed in different situations (e.g. reschedule for later).
+    """ Update system date/time from WorldTimeAPI public server no account required. Pass in time zone string
+        (http://worldtimeapi.org/api/timezone for list) or None to use IP geolocation. Returns current local
+        time as a time.struct_time and UTC offset as string. This may throw an exception on fetch_data().
     """
 
     if timezone: # Use timezone api
@@ -164,8 +131,6 @@ def display_event(name, event, icon):
     elif time_struct.tm_hour > 0:
         hour_string = str(time_struct.tm_hour)
     CLOCK_FACE[CLOCK_EVENT].text = hour_string + ':' + '{0:0>2}'.format(time_struct.tm_min)
-
-# METEOROLOGICAL DATA CLASS ###################################################
 
 # pylint: disable=too-few-public-methods
 class EarthData():
@@ -230,8 +195,6 @@ class EarthData():
             except Exception as e:
                 print('Fetching moon data via for: ' + str(e))
                 time.sleep(15)
-
-# ONE-TIME INITIALIZATION #####################################################
 
 MATRIX = Matrix(bit_depth=BIT_DEPTH)
 DISPLAY = MATRIX.display
@@ -320,7 +283,6 @@ except KeyError:
     ))
     print('Using IP geolocation: ', LATITUDE, LONGITUDE)
 
-# Load timezone from secrets.py, or use IP geolocation. See http://worldtimeapi.org/api/timezone
 try:
     TIMEZONE = secrets['timezone'] # e.g. 'America/Los_Angeles'
 
@@ -349,8 +311,6 @@ PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UT
 # This is a count down for the 8 events: sunrise/sunset/moonrise/moonset x today/tomorrow
 DIURNAL_EVENT = 8
 
-# MAIN LOOP ###################################################################
-
 while True:
     gc.collect()
     NOW = time.time() # Current epoch time in seconds
@@ -365,25 +325,19 @@ while True:
 
         except Exception as e:
             print("Error syncing with time server: " + str(e))
-            # update_time() can throw an exception if time server doesn't
-            # respond. That's OK, keep running with our current time, and
-            # push sync time ahead to retry in 30 minutes.
             LAST_SYNC += 30 * SECONDS_PER_HOUR # 30 minutes -> seconds
 
-    # If PERIOD has expired, fetch the next set of days
-    if NOW >= PERIOD[TOMORROW].midnight:
-        PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
-        PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
+    try:
+        if NOW >= PERIOD[TOMORROW].midnight:
+            PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
+            PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
+    except Exception as e:
+        print("Caught exception. Restarting " + str(e))
+        sys.exit()
 
     # Determine weighting of tomorrow's phase vs today's, using current time
     RATIO = ((NOW - PERIOD[TODAY].midnight) / (PERIOD[TOMORROW].midnight - PERIOD[TODAY].midnight))
 
-    # Determine moon phase 'age'
-    # 0.0  = new moon
-    # 0.25 = first quarter
-    # 0.5  = full moon
-    # 0.75 = last quarter
-    # 1.0  = new moon
     if PERIOD[TODAY].age < PERIOD[TOMORROW].age:
         AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age - PERIOD[TODAY].age) * RATIO) % 1.0
     else: # Handle age wraparound (1.0 -> 0.0)
