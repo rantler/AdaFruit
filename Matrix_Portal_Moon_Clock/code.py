@@ -87,8 +87,6 @@ def update_time(timezone=None):
     return time_struct
 
 def hh_mm(time_struct):
-    # Given a time.struct_time, return a string as H:MM or HH:MM, in either 12 or 24 hour style.
-
     if TWELVE_HOUR:
         if time_struct.tm_hour > 12:
             hour_string = str(time_struct.tm_hour - 12) # 13-23 -> 1-11 (pm)
@@ -134,25 +132,7 @@ def display_event(name, event, icon):
 
 # pylint: disable=too-few-public-methods
 class EarthData():
-    """ Class holding lunar data for a given day (00:00:00 to 23:59:59). App uses two of these -- one for the
-        current day, and one for the following day -- then some interpolations and such can be made.
-
-        age      : Moon phase 'age' at midnight (start of period) expressed from 0.0 (new moon) through 0.5
-                   (full moon) to 1.0 (next new moon).
-        midnight : Epoch time in seconds @ midnight (start of period).
-        moonrise : Epoch time of moon rise within this 24-hour period.
-        moonset  : Epoch time of moon set within this 24-hour period.
-        sunrise  : Epoch time of sun rise within this 24-hour period.
-        sunset   : Epoch time of sun set within this 24-hour period.
-    """
     def __init__(self, datetime, utc_offset):
-        """ Initialize EarthData object elements (see above) from a time.struct_time, hours to skip ahead
-            (typically 0 or 24), and a UTC offset (as a string) and a query to the MET Norway Sunrise API
-            and provides lunar data. Documented at https://api.met.no/weatherapi/sunrise/2.0/documentation
-
-            Example URL:
-            https://api.met.no/weatherapi/sunrise/2.0/.json?lat=47.56&lon=-122.39&date=2020-11-28&offset=-08:00
-        """
         # strftime() not available here
         url = ('https://api.met.no/weatherapi/sunrise/2.0/.json' +
             '?lat=' + str(LATITUDE) +
