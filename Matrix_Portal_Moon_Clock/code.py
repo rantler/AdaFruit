@@ -432,5 +432,6 @@ while True:
         time.sleep(REFRESH_DELAY)
 
         print("VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
-    except:
+    except Exception as e:
+        print("Restarting due to exception: " + str(e))
         supervisor.reload() # Reboot / restart
