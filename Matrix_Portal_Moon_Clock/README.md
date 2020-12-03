@@ -38,7 +38,10 @@ respects daylight saving time, otherwise you can just set it and forget it.
 
 ## Developer notes
 
-### EarthData class
+string = 20
+middle = 16
+
+### `EarthData` class
 
 Class holding lunar data for a given day (00:00:00 to 23:59:59). App uses two of these -- one for the
 current day, and one for the following day -- then some interpolations and such can be made.
@@ -60,6 +63,47 @@ https://api.met.no/weatherapi/sunrise/2.0/.json?lat=47.56&lon=-122.39&date=2020-
 | `sunrise` | Epoch time of sun rise within this 24-hour period.
 | `sunset` | Epoch time of sun set within this 24-hour period.
 
+### `parse_time` method
+
+Given a string of the format YYYY-MM-DDTHH:MM:SS.SS-HH:MM and optional DST flag, convert to and return a time.struct_time since
+strptime() isn't available here. Calling function can use time.mktime() on result if epoch seconds is needed instead. Time string
+is assumed local time. UTC offset is ignored. If seconds value includes a decimal fraction it's ignored.
+
+### `update_time` method
+
+Update system date/time from WorldTimeAPI public server no account required. Pass in time zone string - See
+[http://worldtimeapi.org/api/timezone](http://worldtimeapi.org/api/timezone) for a list, or `None` to use IP geolocation. Returns
+current local time as a time.struct_time and UTC offset as string. This may throw an exception on fetch_data().
+
+### `hh_mm` method
+
+Simple time formatter that take a `time_struct` and formats a 12 or 24 hour formatted string which is used to  display the current
+time on the clock.
+
+### `strftime` method
+
+Poor man's string formatting function since `stftime` isn't available in the Python `time` library used in CircuitPython.
+
+### `display_event` method
+
+Used to format and display the different diurnal events such as moonrise, or sunset. The single-arrow glyphs represent today's
+event, while the double-arrow glyphs represent tomrrow's event.
+
+### Fonts
+
+Not all glyphs are necessarily defined in the symbol font, so check with Font Forge if you can't find the glyph you're looking for.
+
+The bounding box calculated by the `adafruit_display_text` module when a label is added to a `displayio.Group`, i.e. via the `append`
+method, is only calcated at that moment. If you want to know the bounding box of dynamically changing text, you'll need to reassign
+the label such that it contains the new text for which you'd like to know the bounding box. For example, what is done with the date
+positioning as shown below:
+
+```py
+CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
+    color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
+CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 2 - CLOCK_FACE[10].bounding_box[2]
+```
+
 ### Image conversion
 
 Note, the BMP images must be 8-bit indexed color or they will not render. You can use
@@ -76,5 +120,5 @@ mv output.bmp image.bmp
 
 Memory size of this project is approaching the limits of
 [CircuitPython](https://learn.adafruit.com/welcome-to-circuitpython?view=all#what-is-a-memoryerror-3020684-8)
-so be aware that additional code changes can sometimes behave inconsistently and/or result in a
-`MemoryError`. In my experience, the overall size of the `code.py` file can be no larger than 19K.
+so be aware that additional code changes can sometimes behave inconsistently and/or result in a `MemoryError`. In my experience,
+the overall size of the `code.py` file can be no larger than 19K or you'll start encountering spurious memory allocation errors.
