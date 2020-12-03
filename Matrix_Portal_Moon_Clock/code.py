@@ -414,7 +414,7 @@ while True:
     try:
         CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
             color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
-        CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 1 - CLOCK_FACE[10].bounding_box[2]
+        CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 1 - CLOCK_FACE[CLOCK_MONTH].bounding_box[2]
         CLOCK_FACE[CLOCK_SLASH].text = '/'
         CLOCK_FACE[CLOCK_SLASH].x = CENTER_X
         CLOCK_FACE[CLOCK_SLASH].y = TIME_Y + 10
