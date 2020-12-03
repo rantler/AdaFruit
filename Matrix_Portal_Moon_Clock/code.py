@@ -111,26 +111,20 @@ def display_event(name, event, icon):
     time_struct = time.localtime(event)
     print(name + ': ' + strftime(time_struct))
     if LANDSCAPE_MODE:
-        XPOS = 31
+        CLOCK_FACE[CLOCK_GLYPH].x = 30
+        CLOCK_FACE[CLOCK_EVENT].x = 36
     else:
-        XPOS = CENTER_X - (CLOCK_FACE[CLOCK_EVENT].bounding_box[2] + 6) // 2
-    CLOCK_FACE[CLOCK_GLYPH].x = XPOS
+        CLOCK_FACE[CLOCK_GLYPH].x = 0
+        CLOCK_FACE[CLOCK_EVENT].x = 6
     if name.startswith("Sun"):
         CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
     else:
         CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
     CLOCK_FACE[CLOCK_GLYPH].text = icon
     CLOCK_FACE[CLOCK_GLYPH].y = EVENT_Y - 2
-    CLOCK_FACE[CLOCK_EVENT].x = XPOS + 6
     CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
-    # 24 hour times are too large to fit with the glyph
-    if time_struct.tm_hour > 12 and PORTRAIT_MODE:
-        hour_string = str(time_struct.tm_hour - 12)
-    elif time_struct.tm_hour > 0:
-        hour_string = str(time_struct.tm_hour)
-    CLOCK_FACE[CLOCK_EVENT].text = hour_string + ':' + '{0:0>2}'.format(time_struct.tm_min)
+    CLOCK_FACE[CLOCK_EVENT].text = str(time_struct.tm_hour) + ':' + '{0:0>2}'.format(time_struct.tm_min)
 
-# pylint: disable=too-few-public-methods
 class EarthData():
     def __init__(self, datetime, utc_offset):
         # strftime() not available here
@@ -197,9 +191,7 @@ LARGE_FONT.load_glyphs('0123456789:')
 SMALL_FONT.load_glyphs('0123456789:/.%')
 SYMBOL_FONT.load_glyphs('\u2191\u2193\u219F\u21A1')
 
-# Display group is set up once, then we just shuffle items around later.
-# Order of creation here determines their stacking order.
-CLOCK_FACE = displayio.Group(max_size=10)
+CLOCK_FACE = displayio.Group(max_size=13)
 SLEEPING = displayio.Group(max_size=1)
 
 # Element 0 is a stand-in image, later replaced with the moon phase bitmap
@@ -231,9 +223,11 @@ for i in range(4):
 CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
     color=color.set_brightness(MOON_PERCENT_COLOR, GLOBAL_BRIGHTNESS), text='99.9%', y=-99))
 # Element 6 is the current time
+CLOCK_TIME = 6
 CLOCK_FACE.append(adafruit_display_text.label.Label(LARGE_FONT,
     color=color.set_brightness(TIME_COLOR, GLOBAL_BRIGHTNESS), text='12:00', y=-99))
 # Element 7 is the current date
+CLOCK_DATE = 7
 CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
     color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text='12/31', y=-99))
 # Element 8 is a symbol indicating next rise or set - Color is overridden by event colors
@@ -242,6 +236,16 @@ CLOCK_FACE.append(adafruit_display_text.label.Label(SYMBOL_FONT, color=0x00FF00,
 # Element 9 is the time of (or time to) next rise/set event - Color is overridden by event colors
 CLOCK_EVENT = 9
 CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT, color=0x00FF00, text='12:00', y=-99))
+CLOCK_MONTH = 10
+CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
+    color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text='12', y=-99))
+CLOCK_SLASH = 11
+CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
+    color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text='/', y=-99))
+CLOCK_DAY = 12
+CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
+    color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text='2', y=-99))
+
 
 DISPLAY.show(CLOCK_FACE)
 DISPLAY.refresh()
@@ -437,16 +441,20 @@ while True:
     # Update time
     NOW = time.localtime()
     STRING = hh_mm(NOW)
-    CLOCK_FACE[6].text = STRING
-    CLOCK_FACE[6].x = CENTER_X - CLOCK_FACE[6].bounding_box[2] // 2
-    CLOCK_FACE[6].y = TIME_Y
-    # Update date
-    STRING = str(NOW.tm_mon) + '/ ' + str(NOW.tm_mday)
-    CLOCK_FACE[7].text = STRING
-    CLOCK_FACE[7].x = CENTER_X - CLOCK_FACE[7].bounding_box[2] // 2 - 1
-    CLOCK_FACE[7].y = TIME_Y + 10
+    CLOCK_FACE[CLOCK_TIME].text = STRING
+    CLOCK_FACE[CLOCK_TIME].x = CENTER_X - CLOCK_FACE[CLOCK_TIME].bounding_box[2] // 2
+    CLOCK_FACE[CLOCK_TIME].y = TIME_Y
 
-    # Show the clock between 7AM and 11PM, otherwise go to sleep
+    CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
+        color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
+    CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 2 - CLOCK_FACE[10].bounding_box[2]
+    CLOCK_FACE[CLOCK_SLASH].text = '/'
+    CLOCK_FACE[CLOCK_SLASH].x = CENTER_X - 1
+    CLOCK_FACE[CLOCK_SLASH].y = TIME_Y + 10
+    CLOCK_FACE[CLOCK_DAY].text = str(NOW.tm_mday)
+    CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 3
+    CLOCK_FACE[CLOCK_DAY].y = TIME_Y + 10
+
     if 7 < NOW.tm_hour < 23:
         DISPLAY.show(CLOCK_FACE)
     else:
