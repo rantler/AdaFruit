@@ -101,24 +101,24 @@ def strftime(time_struct):
 def display_event(name, event, icon):
     time_struct = time.localtime(event)
     print(name + ': ' + strftime(time_struct))
-    if LANDSCAPE_MODE:
-        CLOCK_FACE[CLOCK_GLYPH].x = 30
-        CLOCK_FACE[CLOCK_EVENT].x = 36
-    else:
-        CLOCK_FACE[CLOCK_GLYPH].x = 0
-        CLOCK_FACE[CLOCK_EVENT].x = 6
+
     if name.startswith("Sun"):
-        CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+        EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
     else:
-        CLOCK_FACE[CLOCK_GLYPH].color = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+        EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+
+    CLOCK_FACE[CLOCK_GLYPH].color = EVENT_COLOR
     CLOCK_FACE[CLOCK_GLYPH].text = icon
     CLOCK_FACE[CLOCK_GLYPH].y = EVENT_Y - 2
+    CLOCK_FACE[CLOCK_GLYPH].x = CLOCK_GLYPH_X
+
+    CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
+        color=EVENT_COLOR, text=str(time_struct.tm_hour) + ':' + '{0:0>2}'.format(time_struct.tm_min), y=EVENT_Y)
     CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
-    CLOCK_FACE[CLOCK_EVENT].text = str(time_struct.tm_hour) + ':' + '{0:0>2}'.format(time_struct.tm_min)
+    CLOCK_FACE[CLOCK_EVENT].x = CENTER_X - CLOCK_FACE[CLOCK_EVENT].bounding_box[2] // 2
 
 class EarthData():
     def __init__(self, datetime, utc_offset):
-        # strftime() not available here
         url = ('https://api.met.no/weatherapi/sunrise/2.0/.json' +
             '?lat=' + str(LATITUDE) +
             '&lon=' + str(LONGITUDE) +
@@ -168,10 +168,8 @@ DISPLAY.rotation = (int(((math.atan2(-ACCEL.acceleration.y, -ACCEL.acceleration.
     (math.pi * 2) + 0.875) * 4) % 4) * 90
 if DISPLAY.rotation in (0, 180):
     LANDSCAPE_MODE = True
-    PORTRAIT_MODE = False
 else:
     LANDSCAPE_MODE = False
-    PORTRAIT_MODE = True
 
 LARGE_FONT = bitmap_font.load_font('/fonts/helvB12.bdf')
 SMALL_FONT = bitmap_font.load_font('/fonts/helvR10.bdf')
@@ -229,7 +227,6 @@ CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
 CLOCK_DAY = 12
 CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
     color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text='2', y=-99))
-
 
 DISPLAY.show(CLOCK_FACE)
 DISPLAY.refresh()
@@ -335,9 +332,11 @@ while True:
         TIME_Y = 6         # Time at top right
         EVENT_Y = 27       # Rise/set at bottom right
         EVENTS_24 = True   # In landscape mode, there's enough room for 24 event hour times
+        CLOCK_GLYPH_X = 30
     else:                  # Vertical 'portrait' orientation
         EVENTS_24 = True   # In portrait mode, there's only room for 12 event hour times
         CENTER_X = 16      # Text down center
+        CLOCK_GLYPH_X = 0
         if MOON_RISEN:
             MOON_Y = 0     # Moon at top
             EVENT_Y = 38   # Rise/set in middle
