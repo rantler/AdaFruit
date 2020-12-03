@@ -38,9 +38,6 @@ respects daylight saving time, otherwise you can just set it and forget it.
 
 ## Developer notes
 
-string = 20
-middle = 16
-
 ### `EarthData` class
 
 Class holding lunar data for a given day (00:00:00 to 23:59:59). App uses two of these -- one for the
