@@ -1,7 +1,7 @@
 import gc
 
-VERSION = "1.5.9.6"
-print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
+VERSION = "1.5.9.7"
+print("VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
 
 import time
 import math
@@ -431,6 +431,6 @@ while True:
         DISPLAY.refresh()
         time.sleep(REFRESH_DELAY)
 
-        print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
+        print("VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
     except:
-        supervisor.reload()
+        supervisor.reload() # Reboot / restart
