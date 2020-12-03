@@ -1,6 +1,6 @@
 import gc
 
-VERSION = "1.5.9.5"
+VERSION = "1.5.9.6"
 print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
 
 import time
@@ -16,7 +16,7 @@ from adafruit_bitmap_font import bitmap_font
 import adafruit_display_text.label
 import adafruit_lis3dh
 import color
-import sys
+import supervisor
 
 try:
     from secrets import secrets
@@ -265,7 +265,7 @@ try:
     DATETIME = update_time(TIMEZONE)
 except Exception as e:
     print("Error setting initial clock time: " + str(e))
-    sys.exit() # Soft restart
+    supervisor.reload() # Reboot / restart
 
 LAST_SYNC = time.mktime(DATETIME)
 PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
@@ -279,6 +279,7 @@ while True:
     # Periodically sync with time server since on-board clock is inaccurate
     if NOW - LAST_SYNC > HOURS_BETWEEN_SYNC * SECONDS_PER_HOUR:
         print("Syncing with time server")
+
         try:
             DATETIME = update_time(TIMEZONE)
             LAST_SYNC = time.mktime(DATETIME)
@@ -286,15 +287,11 @@ while True:
 
         except Exception as e:
             print("Error syncing with time server: " + str(e))
-            LAST_SYNC += 30 * SECONDS_PER_HOUR # 30 minutes -> seconds
+            supervisor.reload() # Reboot / restart
 
-    try:
-        if NOW >= PERIOD[TOMORROW].midnight:
-            PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
-            PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + SECONDS_PER_DAY), UTC_OFFSET)
-    except Exception as e:
-        print("Caught exception. Restarting " + str(e))
-        sys.exit() # Soft restart
+    # Reboot at midnight to update time and free up memory
+    if NOW >= PERIOD[TOMORROW].midnight:
+        supervisor.reload() # Reboot / restart
 
     # Determine weighting of tomorrow's phase vs today's, using current time
     RATIO = ((NOW - PERIOD[TODAY].midnight) / (PERIOD[TOMORROW].midnight - PERIOD[TODAY].midnight))
@@ -415,22 +412,25 @@ while True:
     CLOCK_FACE[CLOCK_TIME].x = CENTER_X - CLOCK_FACE[CLOCK_TIME].bounding_box[2] // 2
     CLOCK_FACE[CLOCK_TIME].y = TIME_Y
 
-    CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
-        color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
-    CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 1 - CLOCK_FACE[10].bounding_box[2]
-    CLOCK_FACE[CLOCK_SLASH].text = '/'
-    CLOCK_FACE[CLOCK_SLASH].x = CENTER_X
-    CLOCK_FACE[CLOCK_SLASH].y = TIME_Y + 10
-    CLOCK_FACE[CLOCK_DAY].text = str(NOW.tm_mday)
-    CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 4
-    CLOCK_FACE[CLOCK_DAY].y = TIME_Y + 10
+    try:
+        CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
+            color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
+        CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 1 - CLOCK_FACE[10].bounding_box[2]
+        CLOCK_FACE[CLOCK_SLASH].text = '/'
+        CLOCK_FACE[CLOCK_SLASH].x = CENTER_X
+        CLOCK_FACE[CLOCK_SLASH].y = TIME_Y + 10
+        CLOCK_FACE[CLOCK_DAY].text = str(NOW.tm_mday)
+        CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 4
+        CLOCK_FACE[CLOCK_DAY].y = TIME_Y + 10
 
-    if 7 < NOW.tm_hour < 23:
-        DISPLAY.show(CLOCK_FACE)
-    else:
-        DISPLAY.show(SLEEPING)
+        if 7 < NOW.tm_hour < 23:
+            DISPLAY.show(CLOCK_FACE)
+        else:
+            DISPLAY.show(SLEEPING)
 
-    DISPLAY.refresh()
-    time.sleep(REFRESH_DELAY)
+        DISPLAY.refresh()
+        time.sleep(REFRESH_DELAY)
 
-    print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
+        print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
+    except:
+        supervisor.reload()
