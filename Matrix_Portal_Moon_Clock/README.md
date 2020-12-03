@@ -119,4 +119,4 @@ Memory size of this project is approaching the limits of
 [CircuitPython](https://learn.adafruit.com/welcome-to-circuitpython?view=all#what-is-a-memoryerror-3020684-8)
 so be aware that additional code changes can sometimes behave inconsistently and/or result in a `MemoryError`. In my experience,
 the overall size of the `code.py` file can be no larger than 19K or you'll start encountering spurious memory allocation errors.
-Runtime free memory at the time of this writing is betwen 5KB and 6KB.
+Runtime free memory at the time of this writing is about 4KB.
