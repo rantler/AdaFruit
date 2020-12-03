@@ -1,4 +1,4 @@
-print("VERSION 1.5.9.1")
+print("VERSION 1.5.9.2")
 
 # pylint: disable=import-error
 import gc
@@ -349,10 +349,8 @@ while True:
     for DAY in reversed(PERIOD):
         if DAY.sunrise and NEXT_SUN_EVENT >= DAY.sunrise >= NOW:
             NEXT_SUN_EVENT = DAY.sunrise
-            SUN_RISEN = False
         if DAY.sunset and NEXT_SUN_EVENT >= DAY.sunset >= NOW:
             NEXT_SUN_EVENT = DAY.sunset
-            SUN_RISEN = True
 
     if LANDSCAPE_MODE: # Horizontal 'landscape' orientation
         CENTER_X = 48      # Text along right
@@ -363,7 +361,7 @@ while True:
     else:                  # Vertical 'portrait' orientation
         EVENTS_24 = True   # In portrait mode, there's only room for 12 event hour times
         CENTER_X = 16      # Text down center
-        if MOON_RISEN or SUN_RISEN:
+        if MOON_RISEN:
             MOON_Y = 0     # Moon at top
             EVENT_Y = 38   # Rise/set in middle
             TIME_Y = 49    # Time/date at bottom
