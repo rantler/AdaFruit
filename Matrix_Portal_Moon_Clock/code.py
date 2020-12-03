@@ -1,6 +1,8 @@
-print("VERSION 1.5.9.4")
-
 import gc
+
+VERSION = "1.5.9.5"
+print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
+
 import time
 import math
 import json
@@ -26,6 +28,7 @@ except ImportError:
 TWELVE_HOUR = True      # If set, use 12-hour time vs 24-hour
 HOURS_BETWEEN_SYNC = 1  # Number of hours between syncs with time server
 SECONDS_PER_HOUR = 3600 # Number of seconds in one hour = 60 * 60
+SECONDS_PER_DAY = 86400 # Number of seconds in one hour = 60 * 60
 COUNTDOWN = False       # If set, show time to vs time of rise/set events
 BIT_DEPTH = 6           # Ideally 6, but can set lower if RAM is tight
 REFRESH_DELAY = 10      # Seconds to wait between screen updates. Should be 5 >= n <= 60
@@ -262,11 +265,11 @@ try:
     DATETIME = update_time(TIMEZONE)
 except Exception as e:
     print("Error setting initial clock time: " + str(e))
-    DATETIME = time.localtime()
+    sys.exit() # Soft restart
 
 LAST_SYNC = time.mktime(DATETIME)
 PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
-PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
+PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + SECONDS_PER_DAY), UTC_OFFSET)
 CURRENT_DIURNAL_EVENT = 8
 
 while True:
@@ -288,7 +291,7 @@ while True:
     try:
         if NOW >= PERIOD[TOMORROW].midnight:
             PERIOD[TODAY] = EarthData(DATETIME, UTC_OFFSET)
-            PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + 24*3600), UTC_OFFSET)
+            PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + SECONDS_PER_DAY), UTC_OFFSET)
     except Exception as e:
         print("Caught exception. Restarting " + str(e))
         sys.exit() # Soft restart
@@ -414,12 +417,12 @@ while True:
 
     CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
         color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
-    CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 2 - CLOCK_FACE[10].bounding_box[2]
+    CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 1 - CLOCK_FACE[10].bounding_box[2]
     CLOCK_FACE[CLOCK_SLASH].text = '/'
-    CLOCK_FACE[CLOCK_SLASH].x = CENTER_X - 1
+    CLOCK_FACE[CLOCK_SLASH].x = CENTER_X
     CLOCK_FACE[CLOCK_SLASH].y = TIME_Y + 10
     CLOCK_FACE[CLOCK_DAY].text = str(NOW.tm_mday)
-    CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 3
+    CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 4
     CLOCK_FACE[CLOCK_DAY].y = TIME_Y + 10
 
     if 7 < NOW.tm_hour < 23:
@@ -429,3 +432,5 @@ while True:
 
     DISPLAY.refresh()
     time.sleep(REFRESH_DELAY)
+
+    print("VERSION " + VERSION + " (" + str(gc.mem_free()) + ")")
