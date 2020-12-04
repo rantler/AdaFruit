@@ -1,6 +1,6 @@
 import gc
 
-VERSION = "1.5.9.7"
+VERSION = "1.5.9.8"
 print("VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
 
 import time
@@ -96,16 +96,21 @@ def display_event(name, event, icon):
 
     if name.startswith("Sun"):
         EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+        hour = time_struct.tm_hour % 12
+        hour = 12 if hour == 0 else hour
+
+        CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
+            color=EVENT_COLOR, text=str(hour) + ':' + '{0:0>2}'.format(time_struct.tm_min), y=EVENT_Y)
     else:
         EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
+        CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
+            color=EVENT_COLOR, text=str(time_struct.tm_hour) + ':' + '{0:0>2}'.format(time_struct.tm_min), y=EVENT_Y)
 
     CLOCK_FACE[CLOCK_GLYPH].color = EVENT_COLOR
     CLOCK_FACE[CLOCK_GLYPH].text = icon
     CLOCK_FACE[CLOCK_GLYPH].y = EVENT_Y - 2
     CLOCK_FACE[CLOCK_GLYPH].x = CLOCK_GLYPH_X
 
-    CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
-        color=EVENT_COLOR, text=str(time_struct.tm_hour) + ':' + '{0:0>2}'.format(time_struct.tm_min), y=EVENT_Y)
     CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
     CLOCK_FACE[CLOCK_EVENT].x = max(CLOCK_GLYPH_X + 6, CENTER_X - CLOCK_FACE[CLOCK_EVENT].bounding_box[2] // 2)
 
