@@ -25,7 +25,6 @@ except ImportError:
     print('WiFi secrets are kept in /secrets.py. Please add them there!')
     raise
 
-TWELVE_HOUR = True      # If set, use 12-hour time vs 24-hour
 HOURS_BETWEEN_SYNC = 1  # Number of hours between syncs with time server
 SECONDS_PER_HOUR = 3600 # Number of seconds in one hour = 60 * 60
 SECONDS_PER_DAY = 86400 # Number of seconds in one hour = 60 * 60
@@ -78,17 +77,10 @@ def update_time(timezone=None):
     return time_struct
 
 def hh_mm(time_struct):
-    if TWELVE_HOUR:
-        if time_struct.tm_hour > 12:
-            hour_string = str(time_struct.tm_hour - 12) # 13-23 -> 1-11 (pm)
-        elif time_struct.tm_hour > 0:
-            hour_string = str(time_struct.tm_hour) # 1-12
-        else:
-            hour_string = '12' # 0 -> 12 (am)
-    else:
-        hour_string = '{0:0>2}'.format(time_struct.tm_hour)
+    hour = time_struct.tm_hour % 12
+    hour = 12 if hour == 0 else hour
 
-    return hour_string + ':' + '{0:0>2}'.format(time_struct.tm_min)
+    return str(hour) + ':' + '{0:0>2}'.format(time_struct.tm_min)
 
 def strftime(time_struct):
     return (str(time_struct.tm_year) + '/' +
@@ -138,7 +130,6 @@ class EarthData():
                 self.midnight = time.mktime(parse_time(location_data['moonphase']['time']))
 
                 if 'sunrise' in location_data:
-                    print(location_data['sunrise']['time'])
                     self.sunrise = time.mktime(parse_time(location_data['sunrise']['time']))
                 else:
                     self.sunrise = None
@@ -318,13 +309,6 @@ while True:
         if DAY.moonset and NEXT_MOON_EVENT >= DAY.moonset >= NOW:
             NEXT_MOON_EVENT = DAY.moonset
             MOON_RISEN = True
-
-    NEXT_SUN_EVENT = PERIOD[1].midnight + 100000 # Force first match
-    for DAY in reversed(PERIOD):
-        if DAY.sunrise and NEXT_SUN_EVENT >= DAY.sunrise >= NOW:
-            NEXT_SUN_EVENT = DAY.sunrise
-        if DAY.sunset and NEXT_SUN_EVENT >= DAY.sunset >= NOW:
-            NEXT_SUN_EVENT = DAY.sunset
 
     if LANDSCAPE_MODE: # Horizontal 'landscape' orientation
         CENTER_X = 48      # Text along right
