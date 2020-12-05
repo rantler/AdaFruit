@@ -1,7 +1,7 @@
 import gc
 
-VERSION = "1.5.9.8"
-print("VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
+VERSION = '1.5.9.9'
+print('VERSION {0} ({1:,} free)'.format(VERSION, gc.mem_free()))
 
 import time
 import math
@@ -44,10 +44,10 @@ PERIOD = [None, None]
 TODAY = 0
 TOMORROW = 1
 
-TODAY_RISE = "\u2191" # ↑
-TODAY_SET = "\u2193" # ↓
-TOMORROW_RISE = "\u219F" # ↟
-TOMORROW_SET = "\u21A1" # ↡
+TODAY_RISE = '\u2191' # ↑
+TODAY_SET = '\u2193' # ↓
+TOMORROW_RISE = '\u219F' # ↟
+TOMORROW_SET = '\u21A1' # ↡
 
 def parse_time(timestring, is_dst=-1):
     date_time = timestring.split('T')
@@ -77,33 +77,32 @@ def update_time(timezone=None):
     return time_struct
 
 def hh_mm(time_struct):
-    hour = time_struct.tm_hour % 12
-    hour = 12 if hour == 0 else hour
-
-    return str(hour) + ':' + '{0:0>2}'.format(time_struct.tm_min)
+    hour = 12 if time_struct.tm_hour % 12 == 0 else time_struct.tm_hour % 12
+    return '{0:0>2}:{1:0>2}'.format(hour, time_struct.tm_min)
 
 def strftime(time_struct):
-    return (str(time_struct.tm_year) + '/' +
-        '{0:0>2}'.format(time_struct.tm_mon) + '/' +
-        '{0:0>2}'.format(time_struct.tm_mday) + ' ' +
-        '{0:0>2}'.format(time_struct.tm_hour) + ':' +
-        '{0:0>2}'.format(time_struct.tm_min) + ':' +
-        '{0:0>2}'.format(time_struct.tm_sec) + ' offset: ' + str(UTC_OFFSET))
+    return '{0:0>2}/{1:0>2}/{2:0>2} {3:0>2}:{4:0>2}:{5:0>2} {6}'.format(
+        time_struct.tm_year,
+        time_struct.tm_mon,
+        time_struct.tm_mday,
+        time_struct.tm_hour,
+        time_struct.tm_min,
+        time_struct.tm_sec,
+        UTC_OFFSET)
 
 def display_event(name, event, icon):
     time_struct = time.localtime(event)
 
-    if name.startswith("Sun"):
+    if name.startswith('Sun'):
         EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
-        hour = time_struct.tm_hour % 12
-        hour = 12 if hour == 0 else hour
+        hour = 12 if time_struct.tm_hour == 0 else time_struct.tm_hour
 
         CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
-            color=EVENT_COLOR, text=str(hour) + ':' + '{0:0>2}'.format(time_struct.tm_min), y=EVENT_Y)
+            color=EVENT_COLOR, text='{0}:{1:0>2}'.format(hour, time_struct.tm_min), y=EVENT_Y)
     else:
         EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(MOON_EVENT_COLOR, GLOBAL_BRIGHTNESS)
         CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
-            color=EVENT_COLOR, text=str(time_struct.tm_hour) + ':' + '{0:0>2}'.format(time_struct.tm_min), y=EVENT_Y)
+            color=EVENT_COLOR, text='{0}:{1:0>2}'.format(time_struct.tm_hour, time_struct.tm_min), y=EVENT_Y)
 
     CLOCK_FACE[CLOCK_GLYPH].color = EVENT_COLOR
     CLOCK_FACE[CLOCK_GLYPH].text = icon
@@ -115,18 +114,17 @@ def display_event(name, event, icon):
 
 class EarthData():
     def __init__(self, datetime, utc_offset):
-        url = ('https://api.met.no/weatherapi/sunrise/2.0/.json' +
-            '?lat=' + str(LATITUDE) +
-            '&lon=' + str(LONGITUDE) +
-            '&date=' + str(datetime.tm_year) + '-' +
-            '{0:0>2}'.format(datetime.tm_mon) + '-' +
-            '{0:0>2}'.format(datetime.tm_mday) +
-            '&offset=' + utc_offset)
+        url = 'https://api.met.no/weatherapi/sunrise/2.0/.json?lat={0}&lon={1}&date={2:0>2}-{3:0>2}-{4:0>2}&offset={5}'.format(
+            LATITUDE,
+            LONGITUDE,
+            datetime.tm_year,
+            datetime.tm_mon,
+            datetime.tm_mday,
+            utc_offset)
 
         for _ in range(5): # Number of retries
             try:
-                print('Fetching diurnal event data via for: ' + '{0:0>2}'.format(datetime.tm_mon) + '/' +
-                    '{0:0>2}'.format(datetime.tm_mday), url)
+                print('Fetching diurnal event data via for: {0:0>2}/{1:0>2}'.format(datetime.tm_mon, datetime.tm_mday))
                 full_data = json.loads(NETWORK.fetch_data(url))
                 location_data = full_data['location']['time'][0]
 
@@ -151,7 +149,7 @@ class EarthData():
                     self.moonset = None
                 return
             except Exception as e:
-                print('Fetching moon data via for: ' + str(e))
+                print('Fetching moon data via for: {0}'.format(e))
                 time.sleep(15)
 
 MATRIX = Matrix(bit_depth=BIT_DEPTH)
@@ -186,7 +184,7 @@ try:
     TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(open('sleeping.bmp', 'rb')), pixel_shader=displayio.ColorConverter())
     SLEEPING.append(TILE_GRID)
 except Exception as e:
-    print("Error loading image(s): " + str(e))
+    print('Error loading image(s): {0}'.format(e))
     CLOCK_FACE.append(adafruit_display_text.label.Label(SMALL_FONT,
         color=color.set_brightness(0xFF0000, GLOBAL_BRIGHTNESS), text='AWOO'))
     CLOCK_FACE[CLOCK_IMAGE].x = (DISPLAY.width - CLOCK_FACE[CLOCK_IMAGE].bounding_box[2] + 1) // 2
@@ -253,10 +251,10 @@ except:
     UTC_OFFSET = '-08:00' # If all else fails, default to PST
 
 try:
-    print("Setting initial clock time")
+    print('Setting initial clock time')
     DATETIME = update_time(TIMEZONE)
 except Exception as e:
-    print("Error setting initial clock time: " + str(e))
+    print('Error setting initial clock time: {0}'.format(e))
     supervisor.reload() # Reboot / restart
 
 LAST_SYNC = time.mktime(DATETIME)
@@ -265,141 +263,141 @@ PERIOD[TOMORROW] = EarthData(time.localtime(time.mktime(DATETIME) + SECONDS_PER_
 CURRENT_DIURNAL_EVENT = 8
 
 while True:
-    gc.collect()
-    NOW = time.time()
+    try:
+        gc.collect()
+        NOW = time.time()
 
-    # Periodically sync with time server since on-board clock is inaccurate
-    if NOW - LAST_SYNC > HOURS_BETWEEN_SYNC * SECONDS_PER_HOUR:
-        print("Syncing with time server")
+        # Periodically sync with time server since on-board clock is inaccurate
+        if NOW - LAST_SYNC > HOURS_BETWEEN_SYNC * SECONDS_PER_HOUR:
+            print('Syncing with time server')
 
-        try:
-            DATETIME = update_time(TIMEZONE)
-            LAST_SYNC = time.mktime(DATETIME)
-            continue # Time may have changed; refresh NOW value
+            try:
+                DATETIME = update_time(TIMEZONE)
+                LAST_SYNC = time.mktime(DATETIME)
+                continue # Time may have changed; refresh NOW value
 
-        except Exception as e:
-            print("Error syncing with time server: " + str(e))
+            except Exception as e:
+                print('Error syncing with time server: {0}'.format(e))
+                supervisor.reload() # Reboot / restart
+
+        # Reboot at midnight to update time and free up memory
+        if NOW >= PERIOD[TOMORROW].midnight:
             supervisor.reload() # Reboot / restart
 
-    # Reboot at midnight to update time and free up memory
-    if NOW >= PERIOD[TOMORROW].midnight:
-        supervisor.reload() # Reboot / restart
+        # Determine weighting of tomorrow's phase vs today's, using current time
+        RATIO = ((NOW - PERIOD[TODAY].midnight) / (PERIOD[TOMORROW].midnight - PERIOD[TODAY].midnight))
 
-    # Determine weighting of tomorrow's phase vs today's, using current time
-    RATIO = ((NOW - PERIOD[TODAY].midnight) / (PERIOD[TOMORROW].midnight - PERIOD[TODAY].midnight))
-
-    if PERIOD[TODAY].age < PERIOD[TOMORROW].age:
-        AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age - PERIOD[TODAY].age) * RATIO) % 1.0
-    else:
-        # Handle age wraparound (1.0 -> 0.0). If tomorrow's age is less than today's, it indicates a new moon
-        # crossover. Add 1 to tomorrow's age when computing age delta.
-        AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age + 1 - PERIOD[TODAY].age) * RATIO) % 1.0
-
-    # AGE can be used for direct lookup to moon bitmap (0 to 99). The images are pre-rendered for a linear
-    # timescale. Note that the solar terminator moves nonlinearly across sphere.
-    FRAME = int(AGE * 100) % 100 # Bitmap 0 to 99
-
-    # Then use some trig to get percentage lit
-    if AGE <= 0.5: # New -> first quarter -> full
-        PERCENT = (1 - math.cos(AGE * 2 * math.pi)) * 50
-    else:          # Full -> last quarter -> new
-        PERCENT = (1 + math.cos((AGE - 0.5) * 2 * math.pi)) * 50
-
-    NEXT_MOON_EVENT = PERIOD[1].midnight + 100000 # Force first match
-    for DAY in reversed(PERIOD):
-        if DAY.moonrise and NEXT_MOON_EVENT >= DAY.moonrise >= NOW:
-            NEXT_MOON_EVENT = DAY.moonrise
-            MOON_RISEN = False
-        if DAY.moonset and NEXT_MOON_EVENT >= DAY.moonset >= NOW:
-            NEXT_MOON_EVENT = DAY.moonset
-            MOON_RISEN = True
-
-    if LANDSCAPE_MODE: # Horizontal 'landscape' orientation
-        CENTER_X = 48      # Text along right
-        MOON_Y = 0         # Moon at left
-        TIME_Y = 6         # Time at top right
-        EVENT_Y = 27       # Rise/set at bottom right
-        EVENTS_24 = True   # In landscape mode, there's enough room for 24 event hour times
-        CLOCK_GLYPH_X = 30
-    else:                  # Vertical 'portrait' orientation
-        EVENTS_24 = True   # In portrait mode, there's only room for 12 event hour times
-        CENTER_X = 16      # Text down center
-        CLOCK_GLYPH_X = 0
-        if MOON_RISEN:
-            MOON_Y = 0     # Moon at top
-            EVENT_Y = 38   # Rise/set in middle
-            TIME_Y = 49    # Time/date at bottom
+        if PERIOD[TODAY].age < PERIOD[TOMORROW].age:
+            AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age - PERIOD[TODAY].age) * RATIO) % 1.0
         else:
-            TIME_Y = 6     # Time/date at top
-            EVENT_Y = 26   # Rise/set in middle
-            MOON_Y = 32    # Moon at bottom
+            # Handle age wraparound (1.0 -> 0.0). If tomorrow's age is less than today's, it indicates a new moon
+            # crossover. Add 1 to tomorrow's age when computing age delta.
+            AGE = (PERIOD[TODAY].age + (PERIOD[TOMORROW].age + 1 - PERIOD[TODAY].age) * RATIO) % 1.0
 
-    print()
+        # AGE can be used for direct lookup to moon bitmap (0 to 99). The images are pre-rendered for a linear
+        # timescale. Note that the solar terminator moves nonlinearly across sphere.
+        FRAME = int(AGE * 100) % 100 # Bitmap 0 to 99
 
-    try:
-        FILENAME = 'moon/moon' + '{0:0>2}'.format(FRAME) + '.bmp'
-        BITMAP = displayio.OnDiskBitmap(open(FILENAME, 'rb'))
-        TILE_GRID = displayio.TileGrid(BITMAP, pixel_shader=displayio.ColorConverter())
-        TILE_GRID.x = 0
-        TILE_GRID.y = MOON_Y
-        CLOCK_FACE[CLOCK_IMAGE] = TILE_GRID
-    except Exception as e:
-        print(e)
+        # Then use some trig to get percentage lit
+        if AGE <= 0.5: # New -> first quarter -> full
+            PERCENT = (1 - math.cos(AGE * 2 * math.pi)) * 50
+        else:          # Full -> last quarter -> new
+            PERCENT = (1 + math.cos((AGE - 0.5) * 2 * math.pi)) * 50
 
-    if PERCENT >= 99.95:
-        STRING = '100%'
-    else:
-        STRING = '{:.1f}'.format(PERCENT + 0.05) + '%'
+        NEXT_MOON_EVENT = PERIOD[1].midnight + 100000 # Force first match
+        for DAY in reversed(PERIOD):
+            if DAY.moonrise and NEXT_MOON_EVENT >= DAY.moonrise >= NOW:
+                NEXT_MOON_EVENT = DAY.moonrise
+                MOON_RISEN = False
+            if DAY.moonset and NEXT_MOON_EVENT >= DAY.moonset >= NOW:
+                NEXT_MOON_EVENT = DAY.moonset
+                MOON_RISEN = True
 
-    LOCAL_TIME = time.localtime()
-    print("Local time is: " + strftime(LOCAL_TIME) + " - VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
+        if LANDSCAPE_MODE: # Horizontal 'landscape' orientation
+            CENTER_X = 48      # Text along right
+            MOON_Y = 0         # Moon at left
+            TIME_Y = 6         # Time at top right
+            EVENT_Y = 27       # Rise/set at bottom right
+            EVENTS_24 = True   # In landscape mode, there's enough room for 24 event hour times
+            CLOCK_GLYPH_X = 30
+        else:                  # Vertical 'portrait' orientation
+            EVENTS_24 = True   # In portrait mode, there's only room for 12 event hour times
+            CENTER_X = 16      # Text down center
+            CLOCK_GLYPH_X = 0
+            if MOON_RISEN:
+                MOON_Y = 0     # Moon at top
+                EVENT_Y = 38   # Rise/set in middle
+                TIME_Y = 49    # Time/date at bottom
+            else:
+                TIME_Y = 6     # Time/date at top
+                EVENT_Y = 26   # Rise/set in middle
+                MOON_Y = 32    # Moon at bottom
 
-    # Set PHASE_PERCENT first, use its size and position for painting the outlines below
-    CLOCK_FACE[PHASE_PERCENT].text = STRING
-    CLOCK_FACE[PHASE_PERCENT].x = 16 - CLOCK_FACE[PHASE_PERCENT].bounding_box[2] // 2
-    CLOCK_FACE[PHASE_PERCENT].y = MOON_Y + 16
+        print()
 
-    for i in range(1, 5):
-        CLOCK_FACE[i].text = CLOCK_FACE[PHASE_PERCENT].text
+        try:
+            FILENAME = 'moon/moon{0:0>2}.bmp'.format(FRAME)
+            BITMAP = displayio.OnDiskBitmap(open(FILENAME, 'rb'))
+            TILE_GRID = displayio.TileGrid(BITMAP, pixel_shader=displayio.ColorConverter())
+            TILE_GRID.x = 0
+            TILE_GRID.y = MOON_Y
+            CLOCK_FACE[CLOCK_IMAGE] = TILE_GRID
+        except Exception as e:
+            print('Error loading bitmap: {0}'.format(e))
 
-    # Paint the black outline text labels for the current moon percentage
-    CLOCK_FACE[1].x, CLOCK_FACE[1].y = CLOCK_FACE[PHASE_PERCENT].x, CLOCK_FACE[PHASE_PERCENT].y - 1
-    CLOCK_FACE[2].x, CLOCK_FACE[2].y = CLOCK_FACE[PHASE_PERCENT].x - 1, CLOCK_FACE[PHASE_PERCENT].y
-    CLOCK_FACE[3].x, CLOCK_FACE[3].y = CLOCK_FACE[PHASE_PERCENT].x + 1, CLOCK_FACE[PHASE_PERCENT].y
-    CLOCK_FACE[4].x, CLOCK_FACE[4].y = CLOCK_FACE[PHASE_PERCENT].x, CLOCK_FACE[PHASE_PERCENT].y + 1
+        if PERCENT >= 99.95:
+            STRING = '100%'
+        else:
+            STRING = '{:.1f}%'.format(PERCENT + 0.05)
 
-    if CURRENT_DIURNAL_EVENT == 8:
-        display_event("Sunrise today", PERIOD[TODAY].sunrise, TODAY_RISE)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 7:
-        display_event("Sunset today", PERIOD[TODAY].sunset, TODAY_SET)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 6:
-        display_event("Moonrise today", PERIOD[TODAY].moonrise, TODAY_RISE)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 5:
-        display_event("Moonset today", PERIOD[TODAY].moonset, TODAY_SET)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 4:
-        display_event("Sunrise tomorrow", PERIOD[TOMORROW].sunrise, TOMORROW_RISE)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 3:
-        display_event("Sunset tomorrow", PERIOD[TOMORROW].sunset, TOMORROW_SET)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 2:
-        display_event("Moonrise tomorrow", PERIOD[TOMORROW].moonrise, TOMORROW_RISE)
-        CURRENT_DIURNAL_EVENT -= 1
-    elif CURRENT_DIURNAL_EVENT == 1:
-        display_event("Moonset tomorrow", PERIOD[TOMORROW].moonset, TOMORROW_SET)
-        CURRENT_DIURNAL_EVENT = 8
+        LOCAL_TIME = time.localtime()
+        print('Local time is {0} - VERSION {1} ({2:,} free)'.format(strftime(LOCAL_TIME), VERSION, gc.mem_free()))
 
-    NOW = time.localtime()
-    STRING = hh_mm(NOW)
-    CLOCK_FACE[CLOCK_TIME].text = STRING
-    CLOCK_FACE[CLOCK_TIME].x = CENTER_X - CLOCK_FACE[CLOCK_TIME].bounding_box[2] // 2
-    CLOCK_FACE[CLOCK_TIME].y = TIME_Y
+        # Set PHASE_PERCENT first, use its size and position for painting the outlines below
+        CLOCK_FACE[PHASE_PERCENT].text = STRING
+        CLOCK_FACE[PHASE_PERCENT].x = 16 - CLOCK_FACE[PHASE_PERCENT].bounding_box[2] // 2
+        CLOCK_FACE[PHASE_PERCENT].y = MOON_Y + 16
 
-    try:
+        for i in range(1, 5):
+            CLOCK_FACE[i].text = CLOCK_FACE[PHASE_PERCENT].text
+
+        # Paint the black outline text labels for the current moon percentage
+        CLOCK_FACE[1].x, CLOCK_FACE[1].y = CLOCK_FACE[PHASE_PERCENT].x, CLOCK_FACE[PHASE_PERCENT].y - 1
+        CLOCK_FACE[2].x, CLOCK_FACE[2].y = CLOCK_FACE[PHASE_PERCENT].x - 1, CLOCK_FACE[PHASE_PERCENT].y
+        CLOCK_FACE[3].x, CLOCK_FACE[3].y = CLOCK_FACE[PHASE_PERCENT].x + 1, CLOCK_FACE[PHASE_PERCENT].y
+        CLOCK_FACE[4].x, CLOCK_FACE[4].y = CLOCK_FACE[PHASE_PERCENT].x, CLOCK_FACE[PHASE_PERCENT].y + 1
+
+        if CURRENT_DIURNAL_EVENT == 8:
+            display_event('Sunrise today', PERIOD[TODAY].sunrise, TODAY_RISE)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 7:
+            display_event('Sunset today', PERIOD[TODAY].sunset, TODAY_SET)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 6:
+            display_event('Moonrise today', PERIOD[TODAY].moonrise, TODAY_RISE)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 5:
+            display_event('Moonset today', PERIOD[TODAY].moonset, TODAY_SET)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 4:
+            display_event('Sunrise tomorrow', PERIOD[TOMORROW].sunrise, TOMORROW_RISE)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 3:
+            display_event('Sunset tomorrow', PERIOD[TOMORROW].sunset, TOMORROW_SET)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 2:
+            display_event('Moonrise tomorrow', PERIOD[TOMORROW].moonrise, TOMORROW_RISE)
+            CURRENT_DIURNAL_EVENT -= 1
+        elif CURRENT_DIURNAL_EVENT == 1:
+            display_event('Moonset tomorrow', PERIOD[TOMORROW].moonset, TOMORROW_SET)
+            CURRENT_DIURNAL_EVENT = 8
+
+        NOW = time.localtime()
+        STRING = hh_mm(NOW)
+        CLOCK_FACE[CLOCK_TIME].text = STRING
+        CLOCK_FACE[CLOCK_TIME].x = CENTER_X - CLOCK_FACE[CLOCK_TIME].bounding_box[2] // 2
+        CLOCK_FACE[CLOCK_TIME].y = TIME_Y
+
         CLOCK_FACE[CLOCK_MONTH] = adafruit_display_text.label.Label(SMALL_FONT,
             color=color.set_brightness(DATE_COLOR, GLOBAL_BRIGHTNESS), text=str(NOW.tm_mon), y=TIME_Y + 10)
         CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 1 - CLOCK_FACE[CLOCK_MONTH].bounding_box[2]
@@ -419,5 +417,5 @@ while True:
         time.sleep(REFRESH_DELAY)
 
     except Exception as e:
-        print("Restarting due to exception: " + str(e))
+        print('Restarting due to exception: {0}'.format(e))
         supervisor.reload() # Reboot / restart
