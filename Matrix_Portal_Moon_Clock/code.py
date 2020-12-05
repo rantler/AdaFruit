@@ -408,7 +408,7 @@ while True:
         CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 4
         CLOCK_FACE[CLOCK_DAY].y = TIME_Y + 10
 
-        if 7 < NOW.tm_hour < 23:
+        if 6 < NOW.tm_hour < 24:
             DISPLAY.show(CLOCK_FACE)
         else:
             DISPLAY.show(SLEEPING)
