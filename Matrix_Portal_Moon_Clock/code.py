@@ -104,13 +104,13 @@ def display_event(name, event, icon):
         CLOCK_FACE[CLOCK_EVENT] = adafruit_display_text.label.Label(SMALL_FONT,
             color=EVENT_COLOR, text='{0}:{1:0>2}'.format(time_struct.tm_hour, time_struct.tm_min), y=EVENT_Y)
 
+    CLOCK_FACE[CLOCK_EVENT].x = max(CLOCK_GLYPH_X + 6, CENTER_X - CLOCK_FACE[CLOCK_EVENT].bounding_box[2] // 2)
+    CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
+
     CLOCK_FACE[CLOCK_GLYPH].color = EVENT_COLOR
     CLOCK_FACE[CLOCK_GLYPH].text = icon
     CLOCK_FACE[CLOCK_GLYPH].y = EVENT_Y - 2
     CLOCK_FACE[CLOCK_GLYPH].x = CLOCK_GLYPH_X
-
-    CLOCK_FACE[CLOCK_EVENT].y = EVENT_Y
-    CLOCK_FACE[CLOCK_EVENT].x = max(CLOCK_GLYPH_X + 6, CENTER_X - CLOCK_FACE[CLOCK_EVENT].bounding_box[2] // 2)
 
 class EarthData():
     def __init__(self, datetime, utc_offset):
