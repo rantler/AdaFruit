@@ -92,7 +92,6 @@ def strftime(time_struct):
 
 def display_event(name, event, icon):
     time_struct = time.localtime(event)
-    print(name + ': ' + strftime(time_struct))
 
     if name.startswith("Sun"):
         EVENT_COLOR = CLOCK_FACE[CLOCK_EVENT].color = color.set_brightness(SUN_EVENT_COLOR, GLOBAL_BRIGHTNESS)
@@ -126,7 +125,7 @@ class EarthData():
 
         for _ in range(5): # Number of retries
             try:
-                print('Fetching moon data via for: ' + '{0:0>2}'.format(datetime.tm_mon) + '/' +
+                print('Fetching diurnal event data via for: ' + '{0:0>2}'.format(datetime.tm_mon) + '/' +
                     '{0:0>2}'.format(datetime.tm_mday), url)
                 full_data = json.loads(NETWORK.fetch_data(url))
                 location_data = full_data['location']['time'][0]
@@ -353,7 +352,7 @@ while True:
         STRING = '{:.1f}'.format(PERCENT + 0.05) + '%'
 
     LOCAL_TIME = time.localtime()
-    print("Local time is: " + strftime(LOCAL_TIME))
+    print("Local time is: " + strftime(LOCAL_TIME) + " - VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
 
     # Set PHASE_PERCENT first, use its size and position for painting the outlines below
     CLOCK_FACE[PHASE_PERCENT].text = STRING
@@ -419,7 +418,6 @@ while True:
         DISPLAY.refresh()
         time.sleep(REFRESH_DELAY)
 
-        print("VERSION " + VERSION + " ({:,} free)".format(gc.mem_free()))
     except Exception as e:
         print("Restarting due to exception: " + str(e))
         supervisor.reload() # Reboot / restart
