@@ -7,10 +7,7 @@ provided in `secrets.py`.
 Written by Phil 'PaintYourDragon' Burgess for Adafruit Industries.
 MIT license, all text above must be included in any redistribution.
 
-BDF fonts from the X.Org project. Startup 'splash' images should not be
-included in derivative projects, thanks. Tall splash images licensed from
-123RF.com, wide splash images used with permission of artist Lew Lashmit
-(viergacht@gmail.com). Rawr!
+BDF fonts from the X.Org project.
 
 Additional features, documentation, and changes by Randy Anter (tantalusrur@gmail.com).
 
