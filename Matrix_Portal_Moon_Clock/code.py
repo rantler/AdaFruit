@@ -78,7 +78,7 @@ def update_time(timezone=None):
 
 def hh_mm(time_struct):
     hour = 12 if time_struct.tm_hour % 12 == 0 else time_struct.tm_hour % 12
-    return '{0:0>2}:{1:0>2}'.format(hour, time_struct.tm_min)
+    return '{0}:{1:0>2}'.format(hour, time_struct.tm_min)
 
 def strftime(time_struct):
     return '{0:0>2}/{1:0>2}/{2:0>2} {3:0>2}:{4:0>2}:{5:0>2} {6}'.format(
