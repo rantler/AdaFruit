@@ -106,11 +106,10 @@ CLOCK_FACE[CLOCK_MONTH].x = CENTER_X - 2 - CLOCK_FACE[10].bounding_box[2]
 Note, the BMP images must be 8-bit indexed color or they will not render. You can use
 [ImageMagick](https://imagemagick.org/index.php), or
 [ImageScience](https://github.com/seattlerb/image_science) to convert an existing BMP file to
-8-bit using a command like this one:
+8-bit indexed while also resizing it using a command like this one:
 
 ```sh
-convert image.bmp -depth 8 output.bmp
-mv output.bmp image.bmp
+convert splash-portrait.bmp -depth 8 -resize 64x32 temp.bmp; mv temp.bmp splash-portrait.bmp
 ```
 
 ### Memory limitations
