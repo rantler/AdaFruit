@@ -409,7 +409,7 @@ while True:
         CLOCK_FACE[CLOCK_DAY].x = CENTER_X + 4
         CLOCK_FACE[CLOCK_DAY].y = TIME_Y + 10
 
-        if 6 < NOW.tm_hour < 24:
+        if secrets['wake_hour'] < NOW.tm_hour < secrets['sleep_hour']:
             DISPLAY.show(CLOCK_FACE)
         else:
             DISPLAY.show(SLEEPING)

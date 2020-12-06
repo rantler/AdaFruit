@@ -26,6 +26,8 @@ The following properties in the `secrets.yml` file _must be_ set:
 
 * `ssid` - A floating point value representing your location, i.e., 'MyWiFiNetwork'
 * `password` - A floating point value representing your location, i.e. 'WiFiPassword'
+* `wake_hour` - An integer value representing the hour at which the clock should awake
+* `sleep_hour` - An integer value representing the hour at which the clock should sleep
 
 Optional properties that can be helpful to set are below. If they are not set, they will be
 looked up dynamically as needed. In particular, the `offset` value can change if your region
@@ -111,6 +113,13 @@ Note, the BMP images must be 8-bit indexed color or they will not render. You ca
 ```sh
 convert splash-portrait.bmp -depth 8 -resize 64x32 temp.bmp; mv temp.bmp splash-portrait.bmp
 ```
+
+### Sleeping
+
+In order to reduce the brightness of the display at night, the sleeping images is extremely dark and may appear totally
+black on your display depending on your settings. The gamma level of the LED panel is extremely high, so even very dark
+colors will appear bright. You can change the hours during which the display sleeps with in the `settings.py`, or disable
+sleep mode entirely by setting the `sleep_hour` to a value higher than `24`.
 
 ### Memory limitations
 
