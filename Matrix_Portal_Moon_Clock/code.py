@@ -1,6 +1,6 @@
 import gc
 
-VERSION = '1.5.9.9'
+VERSION = '1.6.0.0'
 print('VERSION {0} ({1:,} free)'.format(VERSION, gc.mem_free()))
 
 import time
@@ -161,7 +161,9 @@ DISPLAY.rotation = (int(((math.atan2(-ACCEL.acceleration.y, -ACCEL.acceleration.
     (math.pi * 2) + 0.875) * 4) % 4) * 90
 if DISPLAY.rotation in (0, 180):
     LANDSCAPE_MODE = True
+    SPLASH = 'splash-landscape.bmp'
 else:
+    SPLASH = 'splash-portrait.bmp'
     LANDSCAPE_MODE = False
 
 LARGE_FONT = bitmap_font.load_font('/fonts/helvB12.bdf')
@@ -177,8 +179,7 @@ SLEEPING = displayio.Group(max_size=1)
 # Element 0 is the splash screen image (1 of 4), later replaced with the moon phase bitmap.
 CLOCK_IMAGE = 0
 try:
-    FILENAME = 'splash-' + str(DISPLAY.rotation) + '.bmp'
-    TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(open(FILENAME, 'rb')), pixel_shader=displayio.ColorConverter())
+    TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(open(SPLASH, 'rb')), pixel_shader=displayio.ColorConverter())
     CLOCK_FACE.append(TILE_GRID)
 
     TILE_GRID = displayio.TileGrid(displayio.OnDiskBitmap(open('sleeping.bmp', 'rb')), pixel_shader=displayio.ColorConverter())
